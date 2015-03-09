@@ -1,0 +1,190 @@
+---
+title: "Coursera Reproducible Research - Assessment 1"
+author: "TechnoPhobe01"
+date: "March 8, 2015"
+output: html_document
+---
+
+The purpose of this document is to develop and answer the Coursera Peer Assessment 1 for Coursera Reproducible Research.
+
+### Step 1: Setup environment and load data set...
+
+The first step is to load the required R packages, download and extract the target zip file into the data subdirectory, that we create if it does not exist. We then load the data into a data frame in preperation for manupulation. **Note:** This program assumes that all the data will be downloaded into the 'data' directory below the working directory.
+
+#### Data
+
+The data for this assignment is downloaded from the course [web site][1]:
+
+- **Dataset**: [Activity monitoring data [52K]][2]
+
+The variables included in this dataset are:
+
+- **steps**: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+- **date**: The date on which the measurement was taken in YYYY-MM-DD format
+- **interval**: Identifier for the 5-minute interval in which measurement was taken
+
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
+
+[1]: https://class.coursera.org/repdata-012 "Reproducible Research"
+[2]: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip "Activity monitoring data"
+
+```{r Setup}
+setwd("~/dev/cousera/datascience/05_ReproducibleResearch/assessment1")
+
+requiredPackages <- c("ggplot2", "scales")
+
+ipak <- function(pkg){
+        new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+        if (length(new.pkg))
+                install.packages(new.pkg, dependencies = TRUE)
+        sapply(pkg, require, character.only = TRUE)
+}
+
+ipak(requiredPackages)
+
+dataDir         <- "./data"
+fileUrl         <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+fileName        <- "activity.csv"               # Extracted File Name
+filePath        <- file.path(dataDir, fileName) # Filepath to extracted file
+
+# If the data dir does not exist we create it, so it can be used to store the
+# downloaded data
+
+if (!file.exists(dataDir)) {
+        dir.create(dataDir)
+}
+
+# Now we download the zip file... and extract it...
+
+if (!file.exists(filePath)) {
+        temp <- tempfile()
+        download.file(fileUrl, temp, mode="wb", method = "curl")
+        unzip(temp, exdir = dataDir)
+        unlink(temp)
+}
+
+# Load the dataset in preperation for manipulation...
+
+activityData <- read.csv(filePath, colClasses = c("integer", "Date", "factor"))
+str(activityData)
+
+```
+## Step 2: Answers the questions posed...
+
+### Question 1: What is the mean total number of steps taken per day?
+
+** Note** For this part of the assignment, we are instructed we can ignore the missing values in the dataset.
+
+1. Calculate the **total number of steps** taken **per day**
+
+#### Answer:
+
+To calculate the **total number of steps** taken **per day** we take the activityData and sum the steps by day to create the **stepsPerDay** dataframe that contains the number of steps by day...
+
+```{r Question1.1}
+
+stepsPerDay <- aggregate(steps ~ date, data = activityData, FUN = sum)
+stepsPerDay
+
+```
+
+2. **Make a histogram of the total number of steps taken each day.** 
+
+If you do not understand the difference between a histogram and a barplot, research the difference between them. 
+
+#### Answer:
+
+A histogram is "a representation of a frequency distribution by means of rectangles whose widths represent class intervals and whose areas are proportional to the corresponding frequencies. Essentially, we graph groups of numbers according to how often they appear. Thus if we have the set {1,2,2,3,3,3,3,4,4,5,6}, we would show a bar for two 2's, four 3's etc. The shape of the graph gives us an idea of how the numbers in the set are distributed about the mean; the distribution of this graph is wide compared to size of the peak, indicating that values in the set are only loosely bunched around the mean. With a *histogram*, we can **bin** the data into convenient ranges to catagorise the data into ranges or buckets.
+
+In this context, we want to create a histogram that shows **steps taken per day**, to do this we took the activity data (**ActivityData**) and aggregate the steps by day (**stepsperDay**) and plot this data using *ggplot2* **geom_historgram()** and divide the data into bin sizes of 1000 steps resulting in the histogram shown below.  
+
+
+
+```{r Question1.2}
+
+gp <- ggplot(stepsPerDay, aes(x=steps)) 
+gp <- gp + geom_histogram(aes(fill = ..count..), binwidth=1000, color="black", width=.2)
+gp <- gp + scale_fill_gradient("Steps", low = "lightgrey", high = "black")
+# One thing we want to do is show the bin count above each bar of the histogram.
+# We do this by using the stat_bin() function, where we set the label to the
+# count of the bin as defiend by the binwidth...
+gp <- gp + stat_bin(binwidth = 1000,
+                    aes( y = (..count..),
+                         label = (..count..), 
+                         ymax = max(..count..) * 1.05 ), 
+                    geom  = "text", 
+                    size  = 3,
+                    vjust = -1.5)
+gp <- gp + xlab(paste0("\n","Step Count Bins (Bin=1000)"))
+gp <- gp + ylab(paste0("Frequency","\n"))
+# Here we create a plot title across two lines...
+title <- paste("Histogram")
+title2 <- paste("of Steps Taken per Day")
+gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
+# Now display the plot...
+gp
+
+```
+
+3. Calculate and report the **mean** and **median** of the **total number of steps** taken **per day**
+
+#### Answer:
+
+To calculate the **mean** and **medium** we take the dataframe we created earlier and calculate the **mean** and **medium** across of the **steps** column in the **stepsPerDay** dataframe. We can now compare that with the **histogram** we created earlier. 
+
+*Note that the histogram maps to the mean and medium results below...*
+
+#### Result: 
+
+Mean =  **10766.19**
+Medium = **10765**
+
+```{r Question1.3}
+
+mean(stepsPerDay$steps)
+median(stepsPerDay$steps)
+
+```
+
+### Question 2: What is the average daily activity pattern?
+
+1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r Time_Series_Plot}
+
+```
+
+1. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r 5_Minute_Interval_Analysis}
+
+```
+
+#### Imputing missing values
+
+Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.
+
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+```{r Calculate_Missing_Value_Count}
+
+```
+
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+```{r Missign_Values}
+
+```
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+```{r New_DataSet}
+
+```
+
+4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+```{r New_Histogram}
+
+
+```
