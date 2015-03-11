@@ -35,9 +35,9 @@ The dataset is stored in a comma-separated-value (CSV) file and there are a tota
 
 
 ```r
-setwd("~/dev/cousera/datascience/05_ReproducibleResearch/assessment1")
+setwd("~/dev/cousera/courses/05_ReproducibleResearch/01_course_work/assessment1")
 
-requiredPackages <- c("ggplot2", "scales")
+requiredPackages <- c("ggplot2", "scales", "lubridate")
 
 ipak <- function(pkg){
         new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
@@ -50,8 +50,8 @@ ipak(requiredPackages)
 ```
 
 ```
-## ggplot2  scales 
-##    TRUE    TRUE
+##   ggplot2    scales lubridate 
+##      TRUE      TRUE      TRUE
 ```
 
 ```r
@@ -102,7 +102,14 @@ To calculate the **total number of steps** taken **per day** we take the activit
 
 
 ```r
-stepsPerDay <- aggregate(steps ~ date, data = activityData, FUN = sum)
+# Note: The default action of aggregate() is to ignore missing values in the 
+# given variables. In essence, it automatically ignores missing values which is 
+# what we want in this case...
+# 
+# If we did'nt ignore the NA values with would have a bar for values of NA/0...
+# in the histogram...
+
+stepsPerDay <- aggregate(steps ~ date, data = activityData, FUN = sum, na.action = na.omit)
 stepsPerDay
 ```
 
@@ -174,8 +181,6 @@ A histogram is "a representation of a frequency distribution by means of rectang
 In this context, we want to create a histogram that shows **steps taken per day**, to do this we took the activity data (**ActivityData**) and aggregate the steps by day (**stepsperDay**) and plot this data using *ggplot2* **geom_historgram()** and divide the data into bin sizes of 1000 steps resulting in the histogram shown below.  
 
 
-
-
 ```r
 gp <- ggplot(stepsPerDay, aes(x=steps)) 
 gp <- gp + geom_histogram(aes(fill = ..count..), binwidth=1000, color="black", width=.2)
@@ -208,7 +213,7 @@ print(gp)
 
 To calculate the **mean** and **medium** we take the dataframe we created earlier and calculate the **mean** and **medium** across of the **steps** column in the **stepsPerDay** dataframe. We can now compare that with the **histogram** we created earlier. 
 
-*Note that the histogram maps to the mean and medium results below...*
+*Note that the histogram maps to the mean and medium results below; t is important to note that we omit NA values based on the use of aggregate() to create the stepsPerDay counts*
 
 #### Result: 
 
@@ -236,11 +241,66 @@ median(stepsPerDay$steps)
 
 1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
+##### Answer:
 
+This actually took me a lot longer than I expected. In part becuase I had to go back and re-evaulate the activity data. 
+
+The main reason for doing that was that I could not get the X axis to display the time correctly - just 5 minute increments... The original data in **activity.csv** stores the interval measurement in 5 minute increments but that does not (at least for me) map well to a 24 hour clock... So my goal was to covert the five minute samples into time format... This was harder than I thought...
+
+The interval maps to 0, 5, 10 ... 55, then jumps to 100, 105.. 155; which essentially implies the data creates a sample every five 
+minutes over an hour. Ok, so we need to show the average activity across the whole data set. We can do this by aggregating the step data by interval - we generate the mean of all step values of the same interval value) 
+
+Note that we cast the Interval from a factor to a numeric...
+
+
+```r
+avgSteps <- aggregate(steps ~ (as.numeric(levels(interval))[interval]), activityData, FUN = mean)
+names(avgSteps)[1] <- "interval"
+names(avgSteps)[2] <- "avgNumberOfSteps"
+```
+
+Here is the problem... the resulting dataframe interval column needs to be converted to hour format...
+
+i.e. HH:MM
+
+this then can be used in the ggplot2 graph to correctly map the data across the day on the X axis as time value... 
+
+
+```r
+avgSteps$interval <- sprintf("%04d", avgSteps$interval)
+avgSteps$interval <- strptime(avgSteps$interval, format = "%H%M")
+```
+
+
+
+```r
+rm(gp)
+gp <- ggplot(avgSteps, aes(x = interval, y = avgNumberOfSteps))
+gp <- gp + geom_line(size = .8)
+gp <- gp + scale_x_datetime(labels=date_format("%H:%M"))
+gp <- gp + xlab(paste0("\n","Sampled averages across 5-minute intervals over each day"))
+gp <- gp + ylab(paste0("Average Number of Steps Taken","\n"))
+# Here we create a plot title across two lines...
+title <- paste("Time Series Plot ")
+title2 <- paste("of the 5-minute Intervals")
+gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
+# Now display the plot...
+print(gp)
+```
+
+![plot of chunk Time_Series_Plot](figure/Time_Series_Plot-1.png) 
 
 1. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
 
 
+```r
+avgSteps[which.max(avgSteps$avgNumberOfSteps), ]
+```
+
+```
+##                interval avgNumberOfSteps
+## 104 2015-03-10 08:35:00         206.1698
+```
 
 #### Imputing missing values
 
@@ -248,7 +308,18 @@ Note that there are a number of days/intervals where there are missing values (c
 
 1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
 
+##### Answer:
 
+The total number of NA values is **2304**, we caculate this by summing the number of values that are NA in the **activityData$steps** set. 
+
+
+```r
+sum(is.na(activityData$steps))
+```
+
+```
+## [1] 2304
+```
 
 2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
 
