@@ -292,6 +292,10 @@ print(gp)
 
 1. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
 
+##### Answer:
+
+The 5 minute data interval at **8:35** contains the maximum number of steps on average across all the days tracked. 
+
 
 ```r
 avgSteps[which.max(avgSteps$avgNumberOfSteps), ]
@@ -321,7 +325,8 @@ sum(is.na(activityData$steps))
 ## [1] 2304
 ```
 
-2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the
+mean for that 5-minute interval, etc.
 
 
 
