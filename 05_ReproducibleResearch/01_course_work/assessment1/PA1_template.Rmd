@@ -1,0 +1,416 @@
+---
+title: "Coursera Reproducible Research - Assessment 1"
+author: "TechnoPhobe01"
+date: "March 8, 2015"
+output:
+  html_document:
+  - default
+  pdf_document:
+    fig_caption:
+    - yes
+---
+
+The purpose of this document is to develop and answer the Coursera Peer Assessment 1 for Coursera Reproducible Research.
+
+### Step 1: Setup environment and load data set...
+
+The first step is to load the required R packages, download and extract the target zip file into the data subdirectory, that we create if it does not exist. We then load the data into a data frame in preperation for manupulation. **Note:** This program assumes that all the data will be downloaded into the 'data' directory below the working directory.
+
+#### Data
+
+The data for this assignment is downloaded from the course [web site][1]:
+
+- **Dataset**: [Activity monitoring data [52K]][2]
+
+The variables included in this dataset are:
+
+- **steps**: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+- **date**: The date on which the measurement was taken in YYYY-MM-DD format
+- **interval**: Identifier for the 5-minute interval in which measurement was taken
+
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
+
+[1]: https://class.coursera.org/repdata-012 "Reproducible Research"
+[2]: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip "Activity monitoring data"
+
+```{r Setup}
+setwd("~/dev/cousera/courses/05_ReproducibleResearch/01_course_work/assessment1")
+
+requiredPackages <- c("ggplot2", "scales", "lubridate", "gridExtra")
+
+ipak <- function(pkg){
+        new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+        if (length(new.pkg))
+                install.packages(new.pkg, dependencies = TRUE)
+        sapply(pkg, require, character.only = TRUE)
+}
+
+ipak(requiredPackages)
+
+dataDir         <- "./data"
+fileUrl         <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+fileName        <- "activity.csv"               # Extracted File Name
+filePath        <- file.path(dataDir, fileName) # Filepath to extracted file
+
+# If the data dir does not exist we create it, so it can be used to store the
+# downloaded data
+
+if (!file.exists(dataDir)) {
+        dir.create(dataDir)
+}
+
+# Now we download the zip file... and extract it...
+
+if (!file.exists(filePath)) {
+        temp <- tempfile()
+        download.file(fileUrl, temp, mode="wb", method = "curl")
+        unzip(temp, exdir = dataDir)
+        unlink(temp)
+}
+
+# Load the dataset in preperation for manipulation...
+
+activityData <- read.csv(filePath, colClasses = c("numeric", "Date", "integer"))
+str(activityData)
+
+```
+
+
+## Step 2: Answers the questions posed...
+
+### Question 1: What is the mean total number of steps taken per day?
+
+** Note** For this part of the assignment, we are instructed we can ignore the missing values in the dataset.
+
+1. Calculate the **total number of steps** taken **per day**
+
+#### Answer:
+
+To calculate the **total number of steps** taken **per day** we take the activityData and sum the steps by day to create the **stepsPerDay** dataframe that contains the number of steps by day...
+
+```{r AggregateDataByDay}
+
+# Note: The default action of aggregate() is to ignore missing values in the 
+# given variables. In essence, it automatically ignores missing values which is 
+# what we want in this case...
+# 
+# If we did'nt ignore the NA values with would have a bar for values of NA/0...
+# in the histogram...
+
+stepsPerDay <- aggregate(steps ~ date, data = activityData, FUN = sum, na.action = na.omit)
+stepsPerDay
+
+```
+
+2. **Make a histogram of the total number of steps taken each day.** 
+
+If you do not understand the difference between a histogram and a barplot, research the difference between them. 
+
+#### Answer:
+
+A histogram is "a representation of a frequency distribution by means of rectangles whose widths represent class intervals and whose areas are proportional to the corresponding frequencies. Essentially, we graph groups of numbers according to how often they appear. Thus if we have the set {1,2,2,3,3,3,3,4,4,5,6}, we would show a bar for two 2's, four 3's etc. The shape of the graph gives us an idea of how the numbers in the set are distributed about the mean; the distribution of this graph is wide compared to size of the peak, indicating that values in the set are only loosely bunched around the mean. With a *histogram*, we can **bin** the data into convenient ranges to catagorise the data into ranges or buckets.
+
+In this context, we want to create a histogram that shows **steps taken per day**, to do this we took the activity data (**activityData**) and aggregate the steps by day (**stepsperDay**) and plot this data using *ggplot2* **geom_historgram()** and divide the data into bin sizes of 1000 steps resulting in the histogram shown below.  
+
+```{r CreateHistogram, fig=TRUE}
+
+gp <- ggplot(stepsPerDay, aes(x=steps)) 
+gp <- gp + geom_histogram(aes(fill = ..count..), binwidth=1000, color="black", width=.2)
+gp <- gp + scale_fill_gradient("Steps", low = "lightgrey", high = "black")
+# One thing we want to do is show the bin count above each bar of the histogram.
+# We do this by using the stat_bin() function, where we set the label to the
+# count of the bin as defiend by the binwidth...
+gp <- gp + stat_bin(binwidth = 1000,
+                    aes( y = (..count..),
+                         label = (..count..), 
+                         ymax = max(..count..) * 1.05 ), 
+                    geom  = "text", 
+                    size  = 3,
+                    vjust = -1.5)
+gp <- gp + xlab(paste0("\n","Step Count Bins (Bin=1000)"))
+gp <- gp + ylab(paste0("Frequency","\n"))
+# Here we create a plot title across two lines...
+title <- paste("Histogram")
+title2 <- paste("of Steps Taken per Day")
+gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
+# Now display the plot...
+print(gp)
+
+```
+
+3. Calculate and report the **mean** and **median** of the **total number of steps** taken **per day**
+
+#### Answer:
+
+To calculate the **mean** and **medium** we take the dataframe we created earlier and calculate the **mean** and **medium** across of the **steps** column in the **stepsPerDay** dataframe. We can now compare that with the **histogram** we created earlier. 
+
+*Note that the histogram maps to the mean and medium results below; t is important to note that we omit NA values based on the use of aggregate() to create the stepsPerDay counts* **(Useful Self Check)**
+
+#### Result: 
+
+Mean =  **10766.19**
+Medium = **10765**
+
+```{r Generate_Mean_and_Median}
+
+mean(stepsPerDay$steps)
+median(stepsPerDay$steps)
+
+```
+
+### Question 2: What is the average daily activity pattern?
+
+1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+##### Answer:
+
+This actually took me a lot longer than I expected. In part becuase I had to go back and re-evaulate the activity data. 
+
+The main reason for doing that was that I could not get the X axis to display the time correctly - just 5 minute increments... The original data in **activity.csv** stores the interval measurement in 5 minute increments but that does not (at least for me) map well to a 24 hour clock... So my goal was to covert the five minute samples into time format... This was harder than I thought...
+
+The interval maps to 0, 5, 10 ... 55, then jumps to 100, 105.. 155; which essentially implies the data creates a sample every five 
+minutes over an hour. Ok, so we need to show the average activity across the whole data set. We can do this by aggregating the step data by interval - we generate the mean of all step values of the same interval value) 
+
+Note that we cast the Interval from a factor to a numeric...
+
+```{r avgSteps1}
+avgSteps <- aggregate(steps ~ interval, activityData, FUN = mean)
+names(avgSteps)[1] <- "interval"
+names(avgSteps)[2] <- "avgSteps"
+```
+
+Here is the problem... the resulting dataframe interval column needs to be converted to hour format...
+
+i.e. HH:MM
+
+this then can be used in the ggplot2 graph to correctly map the data across the day on the X axis as time value... 
+
+```{r avgSteps}
+
+avgSteps$interval <- sprintf("%0d", avgSteps$interval)
+avgSteps$interval <- strptime(avgSteps$interval, format = "%H%M")
+
+```
+
+
+```{r Time_Series_Plot}
+
+rm(gp)
+gp <- ggplot(avgSteps, aes(x = interval, y = avgSteps))
+gp <- gp + geom_line(size = .8)
+gp <- gp + scale_x_datetime(labels=date_format("%H:%M"))
+gp <- gp + xlab(paste0("\n","Sampled averages across 5-minute intervals over each day"))
+gp <- gp + ylab(paste0("Average Number of Steps Taken","\n"))
+# Here we create a plot title across two lines...
+title <- paste("Time Series Plot ")
+title2 <- paste("of the 5-minute Intervals")
+gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
+# Now display the plot...
+print(gp)
+
+```
+
+1. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+##### Answer:
+
+The 5 minute data interval at **8:35** in the morning contains the maximum number of steps on average across all the days tracked. 
+
+To determien this we determine the max value in the avgSteps and use that as the index into avgSteps to return the correct time index. The index time matches to the time series diagram. (**Useful Self check**)
+
+```{r 5_Minute_Interval_Analysis}
+
+avgSteps[which.max(avgSteps$avgSteps),]
+
+```
+
+#### Imputing missing values
+
+Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.
+
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+##### Answer:
+
+The total number of NA values is **2304**, we caculate this by summing the number of values that are NA in the **activityData$steps** set. Here we use the complete.case() function to return a logical vector indicating which cases are complete, i.e., which have have missing values. We negate the result to determine this.
+
+```{r Calculate_Missing_Value_Count}
+
+sum(!complete.cases(activityData))
+
+```
+
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+##### Answer:
+
+So if we visually peruse the **activityData** data set we can see that certain days clearly have no data... OK, so which days? The approach taken to determine this is to subset the data and create a new table of **activityNAData**. Our goal is to match on any row with incomplete data, extract it and put it into a new table **activityNAData**.
+
+OK, so we have **Eight** days that have no data (NA)
+
+```{r Missing_Values}
+
+activityNAData <- subset(activityData, !complete.cases(activityData))
+table(activityNAData$date)
+
+```
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+##### Answer:
+
+Ok, so we need to fill in eight days of data - hmmm. 
+
+We could make up the data, or use some varient of the data we have already... For example, the averaged data across the data set (**avgSteps**), the best option appears to me to take the average daily data and use it to fill in the missing data. 
+
+The advantage of this approach is that if the person being monitored followed a routine of any kind, the averaged data should reflect that. For example - on average the person or persons in the data set appear to be most active at 8:35 in the morning...
+
+So to do this we want to take each NA interval value in **activityData** and replace it with the equivalent average value. We do this with transform(), we check to see if a value is "*NA*", if it is we replace it with the equivalent interval average value.
+
+```{r New_DataSet}
+
+avgStepsList <- tapply(activityData$steps, activityData$interval, mean, na.rm=T)
+activityDataNARemoved <- transform(activityData, steps=ifelse(is.na(steps), avgStepsList, steps))
+
+```
+
+4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. 
+
+##### Answer:
+
+The histogram is displayed below:
+
+```{r New_Histogram}
+
+rm(gp)
+gp <- ggplot(stepsPerDay, aes(x=steps)) 
+gp <- gp + geom_histogram(aes(fill = ..count..), binwidth=1000, color="black", width=.2)
+gp <- gp + scale_fill_gradient("Steps", low = "lightgrey", high = "black")
+gp <- gp + ylim(0,18)
+# One thing we want to do is show the bin count above each bar of the histogram.
+# We do this by using the stat_bin() function, where we set the label to the
+# count of the bin as defiend by the binwidth...
+gp <- gp + stat_bin(binwidth = 1000,
+                    aes( y = (..count..),
+                         label = (..count..), 
+                         ymax = max(..count..) * 1.05 ), 
+                    geom  = "text", 
+                    size  = 2,
+                    vjust = -1.5)
+gp <- gp + xlab(paste0("\n","Step Count Bins (Bin=1000)"))
+gp <- gp + ylab(paste0("Frequency","\n"))
+gp <- gp + theme(axis.text.x=element_text(angle=270,
+                                   hjust=1,
+                                   vjust=0.5,
+                                   size = 10)) 
+# Here we create a plot title across two lines...
+title <- paste("Histogram")
+title2 <- paste("of Steps Taken per Day")
+gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
+# Remove legend from first histogram... i.e. legend.position="none"
+gp <- gp + theme(legend.position="none", plot.title = element_text(size=8, lineheight=.8, face="bold"))
+
+stepsPerDayNARemoved <- aggregate(steps ~ date, data = activityDataNARemoved, FUN = sum)
+
+gp1 <- ggplot(stepsPerDayNARemoved, aes(x=steps)) 
+gp1 <- gp1 + geom_histogram(aes(fill = ..count..), binwidth=1000, color="black", width=.2)
+gp1 <- gp1 + scale_fill_gradient("Steps", low = "lightgrey", high = "black")
+gp1 <- gp1 + ylim(0,18)
+# One thing we want to do is show the bin count above each bar of the histogram.
+# We do this by using the stat_bin() function, where we set the label to the
+# count of the bin as defiend by the binwidth...
+gp1 <- gp1 + stat_bin(binwidth = 1000,
+                    aes( y = (..count..),
+                         label = (..count..), 
+                         ymax = max(..count..) * 1.05 ), 
+                    geom  = "text", 
+                    size  = 2,
+                    vjust = -1.5)
+gp1 <- gp1 + xlab(paste0("\n","Step Count Bins (Bin=1000)"))
+gp1 <- gp1 + ylab(paste0("Frequency","\n"))
+gp1 <- gp1 + theme(axis.text.x=element_text(angle=270,
+                                   hjust=1,
+                                   vjust=0.5,
+                                   size = 10)) 
+# Here we create a plot title across two lines...
+title <- paste("Histogram")
+title2 <- paste("of Steps Taken per Day (NA Removed)")
+gp1 <- gp1 + ggtitle(paste0(title,"\n", title2, "\n"))
+gp1 <- gp1 + theme(legend.position="none", plot.title = element_text(size=8, lineheight=.8, face="bold"))
+# Now display the plots in a grid using gridExtra fucntionality...
+grid.arrange(gp, gp1, ncol = 2)
+
+```
+
+4.1 Do these values differ from the estimates from the first part of the assignment? 
+
+#### Answer
+
+Yes, the values are changed from the first part of the assignment, though only slightly. 
+
+The **mean** is unchanged, whilst the **median** is increased.
+
+4.2 What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+#### Answer
+
+The replacement of the the NA values in the activity data set with the averaged data values has the impact of increasesing the peak from 10 to 18 observations. This arguably does not impact the overall data (at least in my opinion).
+
+- Mean *before* populating the missing NA values is **10766.19**
+- Median *before* populating the missing NA values is **10765**
+- Mean *after* populating missing NA values is **10766.19**
+- Median *after* populating the missing NA values is **10766.19**
+
+```{r NA in place}
+mean(stepsPerDay$steps)
+median(stepsPerDay$steps)
+```
+
+```{r NA Removed}
+mean(stepsPerDayNARemoved$steps)
+median(stepsPerDayNARemoved$steps)
+
+```
+5. Are there differences in activity patterns between weekdays and weekends?
+
+For this part the weekdays() function may be of some help here. Use the dataset with the filled-in missing values for this part.
+
+Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+
+#### Answer:
+
+
+```{r panel plot}
+
+impute          <- transform(activityData, steps=ifelse(is.na(steps), avgSteps$avgSteps, steps))
+week            <- factor(weekdays(impute$date) %in% c("Saturday","Sunday"), 
+                          labels=c("weekday","weekend"), ordered=FALSE)
+
+impsteps        <- aggregate(impute$steps, by=list(interval=impute$interval, weekday=week), mean)
+names(impsteps)[3] <- "avgSteps"
+
+impsteps$interval <- sprintf("%04d", impsteps$interval)
+impsteps$interval <- as.POSIXct(impsteps$interval, format = "%H%M")
+
+rm(gp)
+gp <- ggplot(impsteps, aes(x = interval, 
+                           y = avgSteps, 
+                           group = weekday, 
+                           color = weekday)) 
+# gp <- gp + theme_solarized(light = FALSE)
+gp <- gp + geom_line() 
+gp <- gp + facet_grid( weekday ~ .) 
+gp <- gp + theme(axis.text.x=element_text(angle=270,hjust=1,vjust=0.5, size = 10))
+gp <- gp + scale_x_datetime(breaks = date_breaks("30 mins"),
+                            labels = date_format("%H%M"),
+                            limits = c(impsteps$interval[12], impsteps$interval[286-10]))
+gp <- gp + ylab("Average steps")  
+gp <- gp + xlab("5-minute Time Intervals (Labeled in chunks of 30-minutes)") 
+gp <- gp + theme(legend.position="none")
+print(gp)
+
+```
+
+
