@@ -10,28 +10,17 @@ output:
     - yes
 ---
 
+
+```{r setOptions}
+require(knitr)
+opts_chunk$set(echo = TRUE, cache=FALSE, results = "show", fig.width=10, fig.height=8)
+```
+
 The purpose of this document is to develop and answer the Coursera Peer Assessment 1 for Coursera Reproducible Research.
 
-### Step 1: Setup environment and load data set...
+### Step 1: Setup environment 
 
-The first step is to load the required R packages, download and extract the target zip file into the data subdirectory, that we create if it does not exist. We then load the data into a data frame in preparation for manipulation. **Note:** This program assumes that all the data will be downloaded into the 'data' directory below the working directory.
-
-#### Data
-
-The data for this assignment is downloaded from the course [web site][1]:
-
-- **Dataset**: [Activity monitoring data [52K]][2]
-
-The variables included in this dataset are:
-
-- **steps**: Number of steps taking in a 5-minute interval (missing values are coded as NA)
-- **date**: The date on which the measurement was taken in YYYY-MM-DD format
-- **interval**: Identifier for the 5-minute interval in which measurement was taken
-
-The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
-
-[1]: https://class.coursera.org/repdata-012 "Reproducible Research"
-[2]: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip "Activity monitoring data"
+The first step is to load the required R packages
 
 ```{r Setup}
 setwd("~/dev/cousera/courses/05_ReproducibleResearch/01_course_work/assessment1")
@@ -43,8 +32,8 @@ requiredPackages <- c("lubridate", # Used to for time formatting (well...)
                                    # determining breaks and labels for axes 
                                    # and legends.
                       "gridExtra", # Used to map out plots in Grids
-                      "ggthemes")  # Extra themes, scales and geoms for ggplot (Very cool!)
-
+                      "ggthemes",  # Extra themes, scales and geoms for ggplot (Very cool!)
+                      "xtable")
 ipak <- function(pkg){
         new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
         if (length(new.pkg))
@@ -53,7 +42,30 @@ ipak <- function(pkg){
 }
 
 ipak(requiredPackages)
+```
+#### Step 1.1: Doanload and load the activity data
 
+We download and extract the target zip file into the **./data** sub-directory, that we create if it does not exist. We then load the data into a data frame in preparation for manipulation. 
+
+**Note:** This program assumes that all the data will be downloaded into the 'data' directory below the working directory.
+
+The data for this assignment is downloaded from the course [web site][1]:
+
+- **Dataset**: [Activity monitoring data [52K]][2]
+
+The variables included in this data-set are:
+
+- **steps**: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+- **date**: The date on which the measurement was taken in YYYY-MM-DD format
+- **interval**: Identifier for the 5-minute interval in which measurement was taken
+
+The data-set is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this data-set.
+
+[1]: https://class.coursera.org/repdata-012 "Reproducible Research"
+[2]: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip "Activity monitoring data"
+
+
+```{r importandloadData}
 dataDir         <- "./data"
 fileUrl         <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
 fileName        <- "activity.csv"               # Extracted File Name
@@ -87,7 +99,7 @@ str(activityData)
 
 ### Question 1: What is the mean total number of steps taken per day?
 
-** Note** For this part of the assignment, we are instructed we can ignore the missing values in the dataset.
+** Note** For this part of the assignment, we are instructed we can ignore the missing values in the data-set.
 
 1. Calculate the **total number of steps** taken **per day**
 
@@ -97,7 +109,7 @@ The **mean** total of the number of steps taken per day is **10766.19**
 
 See below for how this is calculated. 
 
-We calculate the **total number of steps** taken **per day** by using the imported **activityData** and sum'ing the steps by day (date) to create the **stepsPerDay** dataframe that contains the number of steps by day...
+We calculate the **total number of steps** taken **per day** by using the imported **activityData** and summing the steps by day (date) to create the **stepsPerDay** data-frame that contains the number of steps by day...
 
 ```{r AggregateDataByDay}
 
@@ -109,14 +121,14 @@ We calculate the **total number of steps** taken **per day** by using the import
 # in the histogram...
 
 stepsPerDay <- aggregate(steps ~ date, data = activityData, FUN = sum, na.action = na.omit)
-stepsPerDay
+head(stepsPerDay,10)
 
 ```
 
 
 #### Question 1.2. **Make a histogram of the total number of steps taken each day.** 
 
-If you do not understand the difference between a histogram and a barplot, research the difference between them. 
+If you do not understand the difference between a histogram and a bar-plot, research the difference between them. 
 
 #### Answer:
 
@@ -156,13 +168,14 @@ print(gp)
 
 #### Answer:
 
-To calculate the **mean** and **medium** we take the dataframe we created earlier and calculate the **mean** and **medium** across of the **steps** column in the **stepsPerDay** dataframe. We can now compare that with the **histogram** we created earlier. 
+To calculate the **mean** and **medium** we take the data-frame we created earlier and calculate the **mean** and **medium** across of the **steps** column in the **stepsPerDay** data-frame. We can now compare that with the **histogram** we created earlier. 
 
 *Note that the histogram maps to the mean and medium results below; t is important to note that we omit NA values based on the use of aggregate() to create the stepsPerDay counts* **(Useful Self Check)**
 
 #### Result: 
 
 Mean =  **10766.19**
+
 Medium = **10765**
 
 ```{r Generate_Mean_and_Median}
@@ -174,11 +187,15 @@ median(stepsPerDay$steps)
 
 ### Question 2: What is the average daily activity pattern?
 
+#### Answer:
+
+The average daily activity pattern is depicted below via the time series plot of 5 minute intervals.
+
 #### 2.1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
 #### Answer:
 
-The interval maps to 0, 5, 10 ... 55, then jumps to 100, 105... 155; which essentially implies the data creates a sample every five minutes over an hour. Ok, so we need to show the average activity across the whole data set. We can do this by aggregating the step data by interval - we generate the mean of all step values of the same interval value) 
+The interval maps to 0, 5, 10 ... 55, then jumps to 100, 105... 155; which essentially implies the data creates a sample every five minutes over an hour. OK, so we need to show the average activity across the whole data set. We can do this by aggregating the step data by interval - we generate the mean of all step values of the same interval value) 
 
 Note that we cast the Interval from a factor to a numeric...
 
@@ -186,9 +203,10 @@ Note that we cast the Interval from a factor to a numeric...
 avgSteps <- aggregate(steps ~ interval, activityData, FUN = mean)
 names(avgSteps)[1] <- "interval"
 names(avgSteps)[2] <- "avgSteps"
+head(avgSteps)
 ```
 
-Here is the problem... the resulting dataframe interval column needs to be converted to hour format...
+Here is the problem... the resulting data-frame interval column needs to be converted to hour format...
 
 i.e. HH:MM
 
@@ -198,7 +216,7 @@ this then can be used in the ggplot2 graph to correctly map the data across the 
 
 avgSteps$interval <- sprintf("%04d", avgSteps$interval)
 avgSteps$interval <- as.POSIXct(avgSteps$interval, format = "%H%M")
-
+head(avgSteps)
 ```
 
 
@@ -246,7 +264,7 @@ Note that there are a number of days/intervals where there are missing values (c
 
 #### Answer:
 
-The total number of NA values is **2304**, we caculate this by summing the number of values that are NA in the **activityData$steps** set. Here we use the complete.case() function to return a logical vector indicating which cases are complete, i.e., which have missing values. We negate the result to determine this.
+The total number of NA values is **2304**, we calculate this by summing the number of values that are NA in the **activityData$steps** set. Here we use the complete.case() function to return a logical vector indicating which cases are complete, i.e., which have missing values. We negate the result to determine this.
 
 ```{r Calculate_Missing_Value_Count}
 
@@ -273,30 +291,36 @@ table(activityNAData$date)
 
 #### Answer:
 
-Ok, so we need to fill in eight days of data - hmmm. 
+OK, so we need to fill in eight days of data - hmmm. 
 
-We could make up the data, or use some varient of the data we have already... For example, the averaged data across the data set (**avgSteps**), the best option appears to me to take the average daily data and use it to fill in the missing data. 
+We could make up the data, or use some variant of the data we have already... For example, the averaged data across the data set (**avgSteps**), the best option appears to me to take the average daily data and use it to fill in the missing data. 
 
 The advantage of this approach is that if the person being monitored followed a routine of any kind, the averaged data should reflect that. For example - on average the person or persons in the data set appear to be most active at 8:35 in the morning...
 
-So to do this we want to take each NA interval value in **activityData** and replace it with the equivalent average value. We do this with transform(), we check to see if a value is "*NA*", if it is we replace it with the equivalent interval average value.
+So to do this we want to take each NA interval value in **activityData** and replace it with the equivalent average value. We do this with transform(), we check to see if a value is "*NA*", if it is we replace it with the equivalent interval average value. 
 
 ```{r New_DataSet}
 
-avgStepsList <- tapply(activityData$steps, activityData$interval, mean, na.rm=T)
-activityDataNARemoved <- transform(activityData, steps=ifelse(is.na(steps), avgStepsList, steps))
+imputedData <- transform(activityData, steps=ifelse(is.na(steps), avgSteps$avgSteps, steps))
+```
 
+Below you can see the **activityData** and compare it to the **imputedData**, where the NA values are replaced **avgSteps** data-set averaged values.
+
+```{r}
+str(activityData)
+head(avgSteps)
+str(imputedData)
 ```
 
 #### 3.4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. 
 
 #### Answer:
 
-The histogram is displayed below:
+The histogram, mean and median number of steps are displayed below:
 
 ```{r New_Histogram}
 
-rm(gp)
+rm(gp, gp1)
 gp <- ggplot(stepsPerDay, aes(x=steps))
 gp <- gp + theme_wsj()
 gp <- gp + geom_histogram(aes(fill = ..count..), binwidth=1000, color="black", width=.2)
@@ -325,7 +349,7 @@ gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
 # Remove legend from first histogram... i.e. legend.position="none"
 gp <- gp + theme(legend.position="none", plot.title = element_text(size=8, lineheight=.8, face="bold"))
 
-stepsPerDayNARemoved <- aggregate(steps ~ date, data = activityDataNARemoved, FUN = sum)
+stepsPerDayNARemoved <- aggregate(steps ~ date, data = imputedData, FUN = sum)
 
 gp1 <- ggplot(stepsPerDayNARemoved, aes(x=steps))
 gp1 <- gp1 + theme_wsj()
@@ -369,9 +393,9 @@ The **mean** is unchanged, whilst the **median** is increased.
 
 #### Answer
 
-The replacement of the NA values in the activity data set with the averaged data values has the impact of increasesing the peak from 10 to 18 observations. This arguably does not impact the overall data (at least in my opinion).
+The replacement of the NA values in the activity data set with the averaged data values has the impact of increasing the peak from 10 to 18 observations. This arguably does not impact the overall data (at least in my opinion).
 
-- Mean *before* populating the missing NA values is **10766.19**
+- Mean *before* populating the missing NA values is  **10766.19**
 - Median *before* populating the missing NA values is **10765**
 - Mean *after* populating missing NA values is **10766.19**
 - Median *after* populating the missing NA values is **10766.19**
@@ -384,36 +408,41 @@ median(stepsPerDay$steps)
 ```{r NA_Removed}
 mean(stepsPerDayNARemoved$steps)
 median(stepsPerDayNARemoved$steps)
-
 ```
 ### Question 4. Are there differences in activity patterns between weekdays and weekends?
 
-For this part the weekdays() function may be of some help here. Use the dataset with the filled-in missing values for this part.
+For this part the weekdays() function may be of some help here. Use the data-set with the filled-in missing values for this part.
 
 ### Answer
 
-If we review the plot below we can determine that the participant during the week get up early (5:30am) and is very active 8:30 and 9:30 (approximately) in contrast to the weekends where they are generally less active in the morning but appears generally more active across the broader 24 hour period.
+If we review the plot below; we observer that the participant activities during the week involve getting up early (5:30am) and being very active between 8:30 and 9:30 (approximately) in contrast to the weekends where they are generally less active in the morning but appear generally more active across the broader 24 hour period.
 
 #### 4.1 Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
 
 #### Answer:
 
+To create the time series plot we create a factor by harnessing weekdays() to create a factor vector that maps **imputed$date** to either a *weekday* or *weekend*. We then use this to create a new data frame of all the averaged steps.
 
 ```{r CreateFactorWeek}
-impute          <- transform(activityData, steps=ifelse(is.na(steps), avgSteps$avgSteps, steps))
 # Here we create the new factor varialble 'week' for use in creating the plot.
-week            <- factor(weekdays(impute$date) %in% c("Saturday","Sunday"), 
+week            <- factor(weekdays(imputedData$date) %in% c("Saturday","Sunday"), 
                           labels=c("weekday","weekend"), ordered=FALSE)
-impsteps        <- aggregate(impute$steps, by=list(interval=impute$interval, weekday=week), mean)
+
+impsteps        <- aggregate(imputedData$steps, by=list(interval=imputedData$interval, weekday=week), mean)
 names(impsteps)[3] <- "avgSteps"
 impsteps$interval <- sprintf("%04d", impsteps$interval)
 impsteps$interval <- as.POSIXct(impsteps$interval, format = "%H%M")
-impsteps
+
+head(impsteps,10)
 ```
 
-#### 4.2 Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+#### 4.2 Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+
+See the README file in the Git-hub repository to see an example of what this plot should look like using simulated data.
 
 #### Answer:
+
+OK, so now we have the imputed and averaged step data that is mapped against ***impsteps$interval** time. We can now create the requested plot. The intent here is to create a plot that distinguishes between the week activity and weekend activity. We use ggplot2 **facet_grid()** to plot the subsets of the data together (i.e. Weekday [weekday|weekend]). 
 
 ```{r Q5_PanelPlot_TimeSeries}
 
@@ -426,6 +455,9 @@ gp <- gp + theme_wsj()
 gp <- gp + geom_line(color="black") 
 gp <- gp + facet_grid( weekday ~ .) 
 gp <- gp + theme(axis.text.x=element_text(angle=270,hjust=1,vjust=0.5, size=8, color="black"))
+
+# ref "http://www.sthda.com/english/wiki/ggplot2-axis-scales-and-transformations"
+
 gp <- gp + scale_x_datetime(breaks = date_breaks("30 mins"),
                             labels = date_format("%H%M"),
                             limits = c(impsteps$interval[12], impsteps$interval[286-10]))
