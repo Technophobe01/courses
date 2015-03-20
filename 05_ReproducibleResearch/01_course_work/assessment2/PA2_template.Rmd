@@ -47,7 +47,7 @@ Please refer to the **Storm Data Overview** and **Results** sections for a revie
 
 The first step is to load the required R packages
 
-```{r Setup}
+```{r Setup, cache=FALSE}
 setwd("~/dev/cousera/courses/05_ReproducibleResearch/01_course_work/assessment2")
 
 requiredPackages <- c("R.utils",   # Used for unziping the bz2 zip file... 
@@ -178,7 +178,7 @@ BGN_DATE:          | MM/DD/YYYY H:MM:SS | Character String
 eventBeginDate:    | YYYY/MM/DD         | POSIXct Date
 eventBeginYear:    | YYYY               | Factor
 
-```{r BGN_DATE_Cleanup, cache=TRUE}
+```{r BGN_DATE_Cleanup, cache=FALSE}
 
 stormData <- mutate(stormData, eventBeginDate = mdy_hms(BGN_DATE,tz=Sys.timezone()))
 stormData <- mutate(stormData, eventBeginYear = year(eventBeginDate))
@@ -189,7 +189,7 @@ stormData <- mutate(stormData, eventBeginYear = year(eventBeginDate))
 
 The next step is to consider `EVTYPE`, the Event Type was standardised in 2000, however prior to this date it was a free text field. A bief check confirms that problems likely exist with the raw data. If we count the number of unique event types we see **`r length(unique(stormData$EVTYPE))`** unique `EVTYPE` values across the raw dataset, where we would hope for **48** values... 
 
-```{r stormDataCount, cache=TRUE}
+```{r stormDataCount, cache=FALSE}
 
 length(unique(stormData$EVTYPE))
 
@@ -203,7 +203,7 @@ It turns out that the post 2000 data also appears to have issues up until 2007. 
 
 The situation requires that we take an alternate approach. We create a set of well defined buckets and aggregate the eventTypes against this. i.e. For every entry we find "hail" in we replace with "HAIL", to do this we use grepl(). Essentially we define a bucketlist (eventFactorName), and matching regular expression list (eventRegex). We use these lists to perform a iteractive search across the evData. Once complete we convert eventType values to be factors. The final step is to extract all the rows that match our factor list and use that as the dataset. 
 
-```{r}
+```{r cache=FALSE}
 eventFactorName <- c("AVALANCHE","BLIZZARD","COLD","DUST","FIRE","FREEZING","FLOOD",  
 "HAIL","HEAT","HURRICANE","LIGHTNING","RAIN","RAIN","SNOW","STORM SURGE","THUNDERSTORM",
 "THUNDERSTORM", "TORNADO","TROPICALSTORM","WIND")
@@ -255,7 +255,7 @@ levels(stormData$eventType)
 
 Fatalities is a numeric value hence we want to check for and remove any negative values. Here we replace negative values by 0. We also check for any very large values.
 
-```{r}
+```{r cache=FALSE}
 
 stormData$FATALITIES[stormData$FATALITIES<0] <- 0
 unique(stormData$FATALITIES)
@@ -265,7 +265,7 @@ unique(stormData$FATALITIES)
 
 Injuries is a numeric value hence we want to check for and remove any negative values. Here we replace negative values by 0. We also check for any very large values.
 
-```{r}
+```{r cache=FALSE}
 
 stormData$INJURIES[stormData$INJURIES<0] <- 0
 unique(stormData$INJURIES)
@@ -277,19 +277,26 @@ Property damage is calculated based off two columns, the first column **PROPDMG*
 
 Our approach here is to remove any negative values from the PROPDMG column, and to convert the second column to be a numeric column after checking that no bad values exist.
 
-```{r}
-stormData$PROPDMG[stormData$PROPDMG<0] <- 0
+```{r cache=FALSE}
+(stormData$PROPDMG[stormData$PROPDMG<0] <- 0)
 
-# Lets count the frequency of the values in stormData$PROPDMGEXP to see what the data quality is like.
-count(stormData$PROPDMGEXP)
+# Lets count the frequency of the values in stormData$PROPDMGEXP to see what the
+# data quality is like.
+stormData %>% group_by(PROPDMGEXP) %>% summarise(count=n())
+
+# Our objective is to clean up the data by first replacing all instances of
+# "k","m","b" by "K", "M", "B"...
 stormData$PROPDMGEXP <- as.character(stormData$PROPDMGEXP)
 stormData$PROPDMGEXP[grepl("k", stormData$PROPDMGEXP, ignore.case = TRUE)] <- "K"
 stormData$PROPDMGEXP[grepl("m", stormData$PROPDMGEXP, ignore.case = TRUE)] <- "M"
 stormData$PROPDMGEXP[grepl("b", stormData$PROPDMGEXP, ignore.case = TRUE)] <- "B"
-count(stormData$PROPDMGEXP)
+
+# OK, we now remove any value that is not "K", "M", "B" and replace with "0"
 stormData$PROPDMGEXP[!grepl("[kmb]", stormData$PROPDMGEXP, ignore.case = TRUE)] <- "0"
 stormData$PROPDMGEXP <- as.factor(stormData$PROPDMGEXP)
-count(stormData$PROPDMGEXP)
+
+# Result Cleaned Dataset...
+stormData %>% group_by(PROPDMGEXP) %>% summarise(count=n())
 
 ```
 
@@ -298,22 +305,33 @@ count(stormData$PROPDMGEXP)
 Crop damage estimates, entered as $ dollar amounts
 Alphabetic Codes to signify magnitude “K” for thousands, “M” for millions, and “B” for billions)
 
-```{r}
+```{r cache=FALSE}
 stormData$PROPDMG[stormData$PROPDMG<0] <- 0
 
-# Lets count the frequency of the values in stormData$CROPDMGEXP to see what the data quality is like.
-count(stormData$CROPDMGEXP)
+# Lets count the frequency of the values in stormData$CROPDMGEXP to see what the
+# data quality is like.
+stormData %>% group_by(CROPDMGEXP) %>% summarise(count=n())
+
+# Our objective is to clean up the data by first replacing all instances of
+# "k","m","b" by "K", "M", "B"...
 stormData$CROPDMGEXP <- as.character(stormData$CROPDMGEXP)
 stormData$CROPDMGEXP[grepl("k", stormData$CROPDMGEXP, ignore.case = TRUE)] <- "K"
 stormData$CROPDMGEXP[grepl("m", stormData$CROPDMGEXP, ignore.case = TRUE)] <- "M"
 stormData$CROPDMGEXP[grepl("b", stormData$CROPDMGEXP, ignore.case = TRUE)] <- "B"
-count(stormData$CROPDMGEXP)
+
+# OK, we now remove any value that is not "K", "M", "B" and replace with "0"
 stormData$CROPDMGEXP[!grepl("[kmb]", stormData$CROPDMGEXP, ignore.case = TRUE)] <- "0"
 stormData$CROPDMGEXP <- as.factor(stormData$CROPDMGEXP)
-count(stormData$CROPDMGEXP)
 
+# Result Cleaned Dataset...
+stormData %>% group_by(CROPDMGEXP) %>% summarise(count=n())
 
 ```
+
+# Data Checks
+
+In this section we present a set of data check we perform on the data prior to caculating the results. These check were previously included inline with the data processing but have been placed here for clarity.
+
 
 
 # Results
@@ -325,6 +343,9 @@ From this data, we found that, on average across the U.S:
 3.
 
 # References
+
+
+
 
 [1]: http://www.noaa.gov/
 [2]: http://www.ncdc.noaa.gov/stormevents/details.jsp?type=collection
