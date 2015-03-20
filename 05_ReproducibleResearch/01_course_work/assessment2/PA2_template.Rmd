@@ -251,7 +251,7 @@ levels(stormData$eventType)
 
 ```
 
-### FATALITIES: Cleanup 
+## FATALITIES: Cleanup 
 
 Fatalities is a numeric value hence we want to check for and remove any negative values. Here we replace negative values by 0. We also check for any very large values.
 
@@ -261,7 +261,7 @@ stormData$FATALITIES[stormData$FATALITIES<0] <- 0
 unique(stormData$FATALITIES)
 
 ```
-### INJURIES: Cleanup 
+## INJURIES: Cleanup 
 
 Injuries is a numeric value hence we want to check for and remove any negative values. Here we replace negative values by 0. We also check for any very large values.
 
@@ -271,11 +271,9 @@ stormData$INJURIES[stormData$INJURIES<0] <- 0
 unique(stormData$INJURIES)
 
 ```
-### PROPDMG / PROPDMGEXP
+## PROPDMG / PROPDMGEXP
 
-Property damage is calculated based off two columns, the first column **PROPDMG** defines the property damage estimates, entered as $ dollar amount. The second column defines an alphabetic exponent code ** PROPDMGEXP*** to signify magnitude “K” for thousands, “M” for millions, and “B” for billions)
-
-Our approach here is to remove any negative values from the PROPDMG column, and to convert the second column to be a numeric column after checking that no bad values exist.
+Property damage is calculated based off two columns, the first column **PROPDMG** defines the property damage estimates, entered as $ dollar amount. The second column defines an alphabetic exponent code **PROPDMGEXP** to signify magnitude “K” for thousands, “M” for millions, and “B” for billions). Our approach here is to remove any negative values from the PROPDMG column, and to reformat **PROPDMGEXP** to only contains values of "B","M","K" or 0. i.e Billions, Millions, Thousands or 0.
 
 ```{r cache=FALSE}
 (stormData$PROPDMG[stormData$PROPDMG<0] <- 0)
@@ -300,10 +298,9 @@ stormData %>% group_by(PROPDMGEXP) %>% summarise(count=n())
 
 ```
 
-### CROPDMG / CROPDMGEXP 
+## CROPDMG / CROPDMGEXP 
 
-Crop damage estimates, entered as $ dollar amounts
-Alphabetic Codes to signify magnitude “K” for thousands, “M” for millions, and “B” for billions)
+For CROPDMG and CROPDMGEXP - we repeat the process we undertook for PROPDMG and PROPDMGEXP. Our approach here is to remove any negative values from the CROPDMG column, and to reformat **CROPDMGEXP** to only contains values of "B","M","K" or 0. i.e Billions, Millions, Thousands or 0.
 
 ```{r cache=FALSE}
 stormData$PROPDMG[stormData$PROPDMG<0] <- 0
@@ -328,11 +325,50 @@ stormData %>% group_by(CROPDMGEXP) %>% summarise(count=n())
 
 ```
 
-# Data Checks
+# Data Checks / Fixes
 
-In this section we present a set of data check we perform on the data prior to caculating the results. These check were previously included inline with the data processing but have been placed here for clarity.
+In this section we present a set of data checks and fixes that we perform on the data prior to caculating the results. These checks have been placed here for clarity.
 
+## Crop and Property Damage Data Checks
 
+The first check that we want to highlight relates to the crop and property exponents. Specifically the largest values. These values will have the largest impact on the data. Here we selected and then calculated the property damage impact of billion dollar events to determine if any outliers exist...
+
+```{r}
+stormDataBillions <- filter(stormData, PROPDMGEXP=="B" | CROPDMGEXP=="B")
+```
+
+```{r}
+stormDataBillions %>% 
+        arrange(eventBeginYear) %>% 
+        select(eventBeginYear,
+               eventType, 
+               PROPDMG, 
+               PROPDMGEXP, 
+               CROPDMG, 
+               CROPDMGEXP) # Drop REFNUM for formating
+```
+
+### Outlier
+
+The clear outlier here is 
+
+- ** 2006 FLOOD Property Damage of 115B **  
+
+a quick check of the date etc online implied a clear lack of a **115B dollar** weather related event in *Nappa*. Thus, the data was deamed suspect as the comments on refnum "**605943**", specifically state that: 
+
+- *Major flooding continued into the early hours of January 1st, before the Napa River finally fell below flood stage and the water receeded. Flooding was severe in Downtown Napa from the Napa Creek and the City and Parks Department was hit with* **$6 million** *in damage alone. The City of Napa had 600 homes with moderate damage, 150 damaged businesses with costs of at least* **$70 million**.
+
+to address these we manually modify the event to specify *M* (Million) as the `PROPDMGEXP`.
+
+```{r}
+stormData[stormData$REFNUM == 605943, "PROPDMGEXP"] <- "M" 
+```
+
+```{r}
+stormData %>% filter(REFNUM == "605943")
+```
+
+---  
 
 # Results
 
