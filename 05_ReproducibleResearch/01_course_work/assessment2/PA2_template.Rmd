@@ -5,16 +5,16 @@ date: "March 8, 2015"
 output:
   html_document:
     fig_caption: yes
+    highlight: haddock
+    keep_md: yes
     number_sections: yes
+    theme: united
     toc: yes
-  pdf_document:
-    fig_caption: yes
 ---
 
 ```{r setOptions}
 require(knitr)
-opts_chunk$set(fig.path="figure/")
-opts_chunk$set(echo = TRUE, fig.width=10, fig.height=8)
+opts_chunk$set(fig.width=10, fig.height=8)
 ```
 
 # Report Analysis of [NOAA][1] Storm Database and Weather Events
@@ -27,7 +27,7 @@ In this report we aim to describe the impact of severe weather events in the Uni
 - Across the United States, which types of events (as indicated in the eventType variable) are most harmful with respect to population health?
 - Across the United States, which types of events have the greatest economic consequences?
 
-Our overall hypothesis is that severe weather events have increased in severity. To investigate and answer these questions and validate our hypothesis, we obtained the Storm and Weather events database from the National Oceanic and Atmospheric Administration ([NOAA][1])  which is collected from various sources across the U.S. We specifically obtained data for the years 1950 and 2011. 
+To investigate and answer these questions and validate our hypothesis, we obtained the Storm and Weather events database from the National Oceanic and Atmospheric Administration ([NOAA][1])  which is collected from various sources across the U.S. We specifically obtained data for the years 1950 and 2011. 
 
 Note: Additional documentation is avaialble from NOOA that explains how the data has been obtained, and what and how the variables are defined and constructed.
 
@@ -50,7 +50,9 @@ The first step is to load the required R packages
 ```{r Setup, cache=FALSE}
 setwd("~/dev/cousera/courses/05_ReproducibleResearch/01_course_work/assessment2")
 
-requiredPackages <- c("R.utils",   # Used for unziping the bz2 zip file... 
+requiredPackages <- c("rmarkdown",
+                      "knitr",
+                      "R.utils",   # Used for unziping the bz2 zip file... 
                       "lubridate", # Used for time formatting  
                       "ggplot2",   # Used to plot graphics 
                       "dplyr",     # Used for data manipulation (very Cool!)
@@ -352,7 +354,7 @@ stormDataBillions %>%
 
 The clear outlier here is 
 
-- ** 2006 FLOOD Property Damage of 115B **  
+- **2006 FLOOD Property Damage of 115B**  
 
 a quick check of the date etc online implied a clear lack of a **115B dollar** weather related event in *Nappa*. Thus, the data was deamed suspect as the comments on refnum "**605943**", specifically state that: 
 
@@ -361,23 +363,76 @@ a quick check of the date etc online implied a clear lack of a **115B dollar** w
 to address these we manually modify the event to specify *M* (Million) as the `PROPDMGEXP`.
 
 ```{r}
+# Update PROPDMGEXP to be 'Millions' instead of 'Billions'
 stormData[stormData$REFNUM == 605943, "PROPDMGEXP"] <- "M" 
 ```
 
-```{r}
-stormData %>% filter(REFNUM == "605943")
+## Create Tidy Data Set
+
+The final component of the dat processing is to create a tidy data set for future use that incorporates the changes we have applied to the data.
+
+```{r TidayDataSet}
+
+
 ```
 
 ---  
 
 # Results
 
-From this data, we found that, on average across the U.S:
+The purpose of the above **data processing** has been to ask and answer the following questions:
 
-1.
-2.
-3.
+- Across the United States, which types of events (as indicated in the eventType variable) are most harmful with respect to population health?
+- Across the United States, which types of events have the greatest economic consequences?
 
+## Events most harmful to population Health
+
+```{r create eventTypeImpactSummary }
+eventTypeImpactSummary <- stormData %>%
+  group_by(eventType) %>%
+  summarise(eventFatalities = sum(FATALITIES), 
+            eventInjuries = sum(INJURIES),
+            eventCount = n() ) %>%
+  mutate(popImpacted = eventFatalities + eventInjuries) %>%
+  mutate(eventFreq = popImpacted / eventCount ) %>%
+  arrange(desc(popImpacted))
+```
+
+```{r populationHealth, comment=NA, results='asis'}
+
+print(xtable(head(eventTypeImpactSummary, n = 10),
+             caption = c("Events most harmful with respect to population",
+                         "Event impact on Population")),
+      digits = c(0,0,0,0,0,0,2),
+      comment = F, 
+      type="html",
+      include.rownames = F)
+```
+
+```{r plot_populationHealth, comment=NA, results='asis'}
+  
+
+```
+
+
+```{r PropertyDamage}
+
+billion  <- 1000000000
+million  <- 1000000
+thousand <- 1000
+
+
+# stormDataDamage <- filter(stormData, 
+#                           stormData$PROPDMGEXP== "B" | 
+#                           stormData$PROPDMGEXP== "M" |
+#                           stormData$PROPDMGEXP== "K" )
+# stormDataDamage %>% 
+#         arrange(eventBeginYear) %>% 
+#         mutate(totalPropDamage = (PROPDMG * billion)) %>%
+#         mutate(totalCropDamage = (CROPDMG * billion)) %>%
+#         mutate(totalDamage = ((PROPDMG * billion) + (CROPDMG * billion))) %>%
+#         select(eventBeginYear,eventType, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP, totalPropDamage, totalCropDamage, totalDamage) 
+```
 # References
 
 
