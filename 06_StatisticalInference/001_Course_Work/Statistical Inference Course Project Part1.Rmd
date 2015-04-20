@@ -7,6 +7,8 @@ output:
     fig_caption: yes
     number_sections: yes
     toc: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setOptions}
@@ -89,22 +91,82 @@ simulationData <- matrix(rexp(simulationCount*exponentialCount, lambda), simulat
 
 We now need to calculate the means of the simulation samples... The Central Limit Theorem implies that if we were to plot a histogram of these means, they would look approximately normal (bell curve) and centered on the mean of the underlying distribution. The variance of these 1000 means would be (theoretical variance)/40
 
-Since we know what this underlying distribution really is (exponential with lambda=0.2), we can see how our simulations compares against what we would expect. Theoretically, we expect to see our simulation means centered on 1/lambda, with a variance of (1/lambda)^2 / 40.
-
 ```{r SampleMean}
-simulatonMeans <- rowMeans(simulationData)
-x_bars <- apply(simulationData, 1, mean)
+# Calculate the row means... 
+simulationData <- data.frame(simulationData) %>% mutate(row.Means = rowMeans(.[]))
+head(simulationData$row.Means)
 
-sim <- data.frame(simulationData) %>% mutate(row.Mean = rowMeans(.[]))
-
-data.frame(simulationData) %>% mutate(test1) 
-compare(data.frame(simulationData),t)
-
+# Calculate Theoretical Mean
 theoreticalMean <- 1/lambda
 theoreticalSigma <- 1/lambda /sqrt(exponentialCount)
+
 ```
+Since we know what this underlying distribution really is (exponential with lambda=0.2), we can see how our simulations compares against what we would expect. Theoretically, we expect to see our simulation means centered on 1/lambda, with a variance of (1/lambda)^2 / 40.
+
+If we compare the simulation population mean to theoretical population mean we see that they are close.
+
+- **Simulation Mean:** `r mean(simulationData$row.Means)`
+- **Theoretical Mean:** `r theoreticalMean`
+
+We can go futher and create a plot to demonstrate that the Sample Mean and Theoretical mean converge...
+
+```{r CompareSampleMeantoTheoreticalMean}
+g <- qplot(simulationData$row.Means, geom = 'blank')   
+g <- g + geom_histogram(aes(y = ..density..), alpha = 0.2, binwidth = .15,colour="black")
+g <- g + geom_vline(xintercept = mean(simulationData$row.Means), colour = 'red',size=1)
+print(g)
 
 
+gp <- ggplot(simulationData, aes(x=row.Means)) 
+gp <- gp + theme_wsj()
+gp <- gp + geom_histogram(aes(y = ..count..), alpha = 0.2, binwidth = .15, colour="black", width=.2 )
+gp <- gp + geom_vline(xintercept = mean(simulationData$row.Means), colour = 'red',size=1)
+
+# One thing we want to do is show the bin count above each bar of the histogram.
+# We do this by using the stat_bin() function, where we set the label to the
+# count of the bin as defined by the binwidth...
+gp <- gp + stat_bin(binwidth = .15,
+                    aes( y = (..count..),
+                         label = (..count..), 
+                         ymax = max(..count..) * 1.05 ), 
+                    geom  = "text", 
+                    size  = 3,
+                    vjust = -1.5)
+gp <- gp + xlab(paste0("\n","Row Mean"))
+gp <- gp + ylab(paste0("Frequency","\n"))
+# Here we create a plot title across two lines...
+title <- paste("Histogram")
+title2 <- paste("of Row Means")
+gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
+gp <- gp + theme(legend.position="none", plot.title = element_text(size=8, lineheight=.8, face="bold"))
+# Now display the plot...
+print(gp)
+
+gp <- ggplot(simulationData, aes(x=row.Means)) 
+gp <- gp + theme_wsj()
+gp <- gp + geom_histogram(aes(y = ..density..), alpha = 0.2, binwidth = .15, colour="black", width=.2 )
+gp <- gp + geom_vline(xintercept = mean(simulationData$row.Means), colour = 'red',size=1)
+
+# One thing we want to do is show the bin count above each bar of the histogram.
+# We do this by using the stat_bin() function, where we set the label to the
+# count of the bin as defined by the binwidth...
+gp <- gp + stat_bin(binwidth = .15,
+                    aes( y = (..density..),
+                         label = round(..density.., digits=2), 
+                         ymax = max(..density..) * 1.05 ), 
+                    geom  = "text", 
+                    size  = 3,
+                    vjust = -1.5)
+gp <- gp + xlab(paste0("\n","Row Mean"))
+gp <- gp + ylab(paste0("Frequency","\n"))
+# Here we create a plot title across two lines...
+title <- paste("Histogram")
+title2 <- paste("of Row Means")
+gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
+gp <- gp + theme(legend.position="none", plot.title = element_text(size=8, lineheight=.8, face="bold"))
+# Now display the plot...
+print(gp)
+```
 
 ### Sample Variance versus Theoretical Variance
 
