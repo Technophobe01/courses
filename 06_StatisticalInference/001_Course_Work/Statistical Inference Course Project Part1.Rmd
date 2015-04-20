@@ -1,0 +1,111 @@
+---
+title: "Statistical Inference Course Project"
+author: "Technophobe01"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+---
+
+```{r setOptions}
+require(knitr)
+opts_chunk$set(echo = TRUE, cache=FALSE, results = "show", fig.width=10, fig.height=8)
+```
+
+# Introduction
+The purpose of this document is to develop and answer the Coursera Peer Assessment Part 1 of the Coursera Statistical Inference Course Project. This document describes our investigation of exponential distributions in relation to the Central Limit Theorem in R. Our goal is show if we add up n values from almost any distribution, the distribution of the sum converges to normal as n increases.  
+
+The Central Limit Theorem essentially explains the prevalence of normal distributions in the natural world. Many characteristics of living things are affected by genetic and environmental factors whose effect is additive. The characteristics we measure are the sum of a large number of small effects, so their distribution tends to be normal.
+
+## Background to investigation and explanation of the assignment
+
+We simulate an exponential distribution in R with rexp(n, lambda) where lambda is the rate parameter. The mean of exponential distribution is 1/lambda and the standard deviation is also 1/lambda. We set lambda = 0.2 for all of the simulations. Based upon this we investigate the distribution of averages of 40 exponentials across a thousand simulations.
+
+We illustrate via simulation and associated explanatory text the properties of the distribution of the mean of 40 exponentials. Sepecifically, we:
+
+1. Show the sample mean and compare it to the theoretical mean of the distribution.
+2. Show how variable the sample is (via variance) and compare it to the theoretical variance of the distribution.
+3. Show that the distribution is approximately normal.
+
+In point 3, we focus on the difference between the distribution of a large collection of random exponentials and the distribution of a large collection of averages of 40 exponentials. 
+
+## Setup environment 
+
+The first step is to load the required R packages
+
+```{r Setup}
+setwd("~/dev/cousera/courses/06_StatisticalInference/001_Course_Work")
+
+requiredPackages <- c("ggplot2",   # Used to plot graphics 
+                      "ggthemes",  # Extra themes, scales and geoms for ggplot (Very cool!)
+                      "xtable",
+                      "dplyr",
+                      "compare")
+ipak <- function(pkg){
+        new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+        if (length(new.pkg))
+                install.packages(new.pkg, dependencies = TRUE)
+        sapply(pkg, require, character.only = TRUE)
+}
+
+ipak(requiredPackages)
+```
+
+### Setup Simulation Variables 
+
+Now we have loaded the R libraries, we setup the variables that will control the required simulation. 
+
+First we call `set.seed` to initialize the random number generator to a known state. We do this as we want to reproduce the same sequence of “random” numbers every time the program executes. In R, we do this by setting the random number generator to a known state at the beginning of the program. That way, it will generate the same (quasi-)random numbers each time and thus yield consistent, reproducible results.
+
+Next, we define the *rate*, *simulation size*, *sample size (Exponential Count)* of each simulation. Let us pause for a moment and discuss **exponential distributions**. Why, you might ask? Because this goes the heart of what we are trying to accomplish... The exponential distribution is the simplest and most important distribution in reliability and survival studies. The failure data of much equipment and many processes are well described by the exponential distribution.
+
+In essence, what we are doing is defining a random sequence of events where we have a *rate of events*, and a *sample size* which we then run over a number of simulation runs. This allows us to simulate what might occur. For example, we might simulate the number of people entering a building per hour. Our lambda entry rate could be .2 per hour, we can now run a simulation to determine the probability that the rate of entry will be greater or lesser than .2 per hour. This then can be viewed as a distribution curve.
+
+```{r define_variables}
+
+set.seed(777)           # Define random number seed
+
+lambda <- 0.2           # Define the rate parameter
+simulationCount <- 1000 # Define the number of simulations to run
+exponentialCount <- 40  # Define the sample size 
+
+```
+
+## Simulations
+
+In the context of our current task, our first step is to initiate a simulation run. We want to run a thousand simulations across 40 random number samples. Why? Our goal is to take a sample of 40 random numbers from an random exponential distribution. We want to know the mean and variance of this unknown distribution and compare against the central limit theorem to see if they are similiar. We can calculate the mean from our sample of 40 random numbers, but the core questions is whether this is enough to understand the underlying distribution. 
+
+Our solution is to run the simulation a 1000 times across 40 random number simulations. 
+
+```{r Simulaton}
+
+simulationData <- matrix(rexp(simulationCount*exponentialCount, lambda), simulationCount, exponentialCount)
+
+```
+
+### Sample Mean versus Theoretical Mean
+
+We now need to calculate the means of the simulation samples... The Central Limit Theorem implies that if we were to plot a histogram of these means, they would look approximately normal (bell curve) and centered on the mean of the underlying distribution. The variance of these 1000 means would be (theoretical variance)/40
+
+Since we know what this underlying distribution really is (exponential with lambda=0.2), we can see how our simulations compares against what we would expect. Theoretically, we expect to see our simulation means centered on 1/lambda, with a variance of (1/lambda)^2 / 40.
+
+```{r SampleMean}
+simulatonMeans <- rowMeans(simulationData)
+x_bars <- apply(simulationData, 1, mean)
+
+sim <- data.frame(simulationData) %>% mutate(row.Mean = rowMeans(.[]))
+
+data.frame(simulationData) %>% mutate(test1) 
+compare(data.frame(simulationData),t)
+
+theoreticalMean <- 1/lambda
+theoreticalSigma <- 1/lambda /sqrt(exponentialCount)
+```
+
+
+
+### Sample Variance versus Theoretical Variance
+
+### Distribution
