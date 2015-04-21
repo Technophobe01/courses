@@ -3,17 +3,17 @@ title: "Statistical Inference Course Project"
 author: "Technophobe01"
 date: '`r Sys.Date()`'
 output:
+  pdf_document:
+    toc: yes
   html_document:
     fig_caption: yes
     number_sections: yes
-    toc: yes
-  pdf_document:
     toc: yes
 ---
 
 ```{r setOptions}
 require(knitr)
-opts_chunk$set(echo = TRUE, cache=FALSE, results = "show", fig.width=10, fig.height=8)
+opts_chunk$set(cache=FALSE, results = "show", fig.width=10, fig.height=8)
 ```
 
 # Introduction
@@ -25,7 +25,7 @@ The Central Limit Theorem essentially explains the prevalence of normal distribu
 
 We simulate an exponential distribution in R with rexp(n, lambda) where lambda is the rate parameter. The mean of exponential distribution is 1/lambda and the standard deviation is also 1/lambda. We set lambda = 0.2 for all of the simulations. Based upon this we investigate the distribution of averages of 40 exponentials across a thousand simulations.
 
-We illustrate via simulation and associated explanatory text the properties of the distribution of the mean of 40 exponentials. Sepecifically, we:
+We illustrate via simulation and associated explanatory text the properties of the distribution of the mean of 40 exponentials. Specifically, we:
 
 1. Show the sample mean and compare it to the theoretical mean of the distribution.
 2. Show how variable the sample is (via variance) and compare it to the theoretical variance of the distribution.
@@ -71,19 +71,19 @@ set.seed(777)           # Define random number seed
 
 lambda <- 0.2           # Define the rate parameter
 simulationCount <- 1000 # Define the number of simulations to run
-exponentialCount <- 40  # Define the sample size 
+sampleSize <- 40  # Define the sample size 
 
 ```
 
 ## Simulations
 
-In the context of our current task, our first step is to initiate a simulation run. We want to run a thousand simulations across 40 random number samples. Why? Our goal is to take a sample of 40 random numbers from an random exponential distribution. We want to know the mean and variance of this unknown distribution and compare against the central limit theorem to see if they are similiar. We can calculate the mean from our sample of 40 random numbers, but the core questions is whether this is enough to understand the underlying distribution. 
+In the context of our current task, our first step is to initiate a simulation run. We want to run a thousand simulations across 40 random number samples. Why? Our goal is to take a sample of 40 random numbers from an random exponential distribution. We want to know the mean and variance of this unknown distribution and compare against the central limit theorem to see if they are similar. We can calculate the mean from our sample of 40 random numbers, but the core questions is whether this is enough to understand the underlying distribution. 
 
 Our solution is to run the simulation a 1000 times across 40 random number simulations. 
 
 ```{r Simulaton}
 
-simulationData <- matrix(rexp(simulationCount*exponentialCount, lambda), simulationCount, exponentialCount)
+simulationData <- matrix(rexp(simulationCount*sampleSize, lambda), simulationCount, sampleSize)
 
 ```
 
@@ -98,7 +98,7 @@ head(simulationData$row.Means)
 
 # Calculate Theoretical Mean
 theoreticalMean <- 1/lambda
-theoreticalSigma <- 1/lambda /sqrt(exponentialCount)
+theoreticalSigma <- 1/lambda /sqrt(sampleSize)
 
 ```
 Since we know what this underlying distribution really is (exponential with lambda=0.2), we can see how our simulations compares against what we would expect. Theoretically, we expect to see our simulation means centered on 1/lambda, with a variance of (1/lambda)^2 / 40.
@@ -108,66 +108,204 @@ If we compare the simulation population mean to theoretical population mean we s
 - **Simulation Mean:** `r mean(simulationData$row.Means)`
 - **Theoretical Mean:** `r theoreticalMean`
 
-We can go futher and create a plot to demonstrate that the Sample Mean and Theoretical mean converge...
+We can go further and create a plot to demonstrate that the Sample Mean and Theoretical mean converge...
 
-```{r CompareSampleMeantoTheoreticalMean}
-g <- qplot(simulationData$row.Means, geom = 'blank')   
-g <- g + geom_histogram(aes(y = ..density..), alpha = 0.2, binwidth = .15,colour="black")
-g <- g + geom_vline(xintercept = mean(simulationData$row.Means), colour = 'red',size=1)
-print(g)
-
-
+```{r CompareSampleMeantoTheoreticalMean,fig.cap="Figure 1: Histogram of Row Means"}
 gp <- ggplot(simulationData, aes(x=row.Means)) 
-gp <- gp + theme_wsj()
-gp <- gp + geom_histogram(aes(y = ..count..), alpha = 0.2, binwidth = .15, colour="black", width=.2 )
-gp <- gp + geom_vline(xintercept = mean(simulationData$row.Means), colour = 'red',size=1)
-
-# One thing we want to do is show the bin count above each bar of the histogram.
-# We do this by using the stat_bin() function, where we set the label to the
-# count of the bin as defined by the binwidth...
-gp <- gp + stat_bin(binwidth = .15,
-                    aes( y = (..count..),
-                         label = (..count..), 
-                         ymax = max(..count..) * 1.05 ), 
-                    geom  = "text", 
-                    size  = 3,
-                    vjust = -1.5)
-gp <- gp + xlab(paste0("\n","Row Mean"))
-gp <- gp + ylab(paste0("Frequency","\n"))
-# Here we create a plot title across two lines...
-title <- paste("Histogram")
-title2 <- paste("of Row Means")
-gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
-gp <- gp + theme(legend.position="none", plot.title = element_text(size=8, lineheight=.8, face="bold"))
-# Now display the plot...
-print(gp)
-
-gp <- ggplot(simulationData, aes(x=row.Means)) 
-gp <- gp + theme_wsj()
+gp <- gp + theme_wsj()  # Use the wall Street Journal Theme for the plot
 gp <- gp + geom_histogram(aes(y = ..density..), alpha = 0.2, binwidth = .15, colour="black", width=.2 )
-gp <- gp + geom_vline(xintercept = mean(simulationData$row.Means), colour = 'red',size=1)
-
 # One thing we want to do is show the bin count above each bar of the histogram.
 # We do this by using the stat_bin() function, where we set the label to the
 # count of the bin as defined by the binwidth...
 gp <- gp + stat_bin(binwidth = .15,
                     aes( y = (..density..),
-                         label = round(..density.., digits=2), 
+                         label = round(..density.. * 10, digits=1), 
                          ymax = max(..density..) * 1.05 ), 
                     geom  = "text", 
                     size  = 3,
                     vjust = -1.5)
-gp <- gp + xlab(paste0("\n","Row Mean"))
-gp <- gp + ylab(paste0("Frequency","\n"))
+# Draw the simuluated mean as a vertical line (red)
+gp <- gp + geom_vline(xintercept = mean(simulationData$row.Means), colour = 'red',size=1)
+# Now we create two lines to ploy the simulated distribution (red), and the
+# normal distribution (blue)
+gp <- gp + geom_line(aes(y = ..density.., colour = 'Simulated'), stat = 'Density')
+gp <- gp + stat_function(geom = "line", fun = dnorm, arg = list(mean = theoreticalMean, sd = theoreticalSigma),
+              size = 1, aes(colour = 'Normal'), fill = NA)
+gp <- gp + scale_colour_manual(name = 'Density', values = c('Blue', 'Red')) 
 # Here we create a plot title across two lines...
 title <- paste("Histogram")
 title2 <- paste("of Row Means")
 gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
-gp <- gp + theme(legend.position="none", plot.title = element_text(size=8, lineheight=.8, face="bold"))
+gp <- gp + theme(legend.position=c(0.75, 0.85), plot.title = element_text(size=20, lineheight=.8, face="bold"))
 # Now display the plot...
 print(gp)
 ```
 
-### Sample Variance versus Theoretical Variance
+### **_Answer_**: Question 1. Show the sample mean and compare it to the theoretical mean of the distribution.
 
-### Distribution
+In conclusion, for question 1 we can see from the above plot, that the average mean of **`r mean(simulationData$row.Means)`** (shown in <span style="color:red">**RED**</span>) is very near to the theoretical mean of  **`r theoreticalMean`**.
+
+## Sample Variance versus Theoretical Variance
+
+A measure of variability is perhaps the most important quantity in statistical analysis. The greater the variability in the data, the greater will be our uncertainty in the values of parameters estimated from the data, and the less will be our ability to distinguish between competing hypotheses about the data.
+
+Thus, our goal is to compare the sample variance with the theoretical variance.
+
+```{r Sample_Variance_versus_Theoretical_Variance}
+
+# Calculate the simulated standard deviation from the sample data 
+standardDeviationDistribution <- sd(simulationData$row.Means)
+standardDeviationDistribution
+
+# Calculate the theoretical standard deviation 
+theoreticalStandardDeviationDistribution <- (1/lambda)/sqrt(sampleSize)
+theoreticalStandardDeviationDistribution
+
+# Calculate the distribution varience
+distributionVariance <- (standardDeviationDistribution^2)
+distributionVariance
+
+# Calculate the theoretical variance 
+variance_theory <- (((1/lambda)*(1/sqrt(sampleSize)))^2)
+variance_theory
+
+```
+
+The theoretical value for the variance of the distribution of averages is given by the variance of the original population $\sigma^2$ divided by the number of samples $40$ used to compute the averages : $var(\bar{X}) = \frac{\sigma^2}{n} = \frac{1}{`r sampleSize` \lambda^2} =$ `r ((1/lambda)*(1/sqrt(sampleSize)))^2`
+
+### **_Answer_**: Question 2. Show how variable the sample is (via variance) and compare it to the theoretical variance of the distribution.
+
+The standard deviation of the distribution is **`r standardDeviationDistribution`** with the theoretical SD calculated as **`r theoreticalStandardDeviationDistribution`**. The Theoretical variance is calculated as **$var(\bar{X}) = \frac{\sigma^2}{n} = \frac{1}{`r sampleSize` \lambda^2} =$ `r ((1/lambda)*(1/sqrt(sampleSize)))^2`**. The actual variance of the distribution is **`r distributionVariance`**.
+
+Thus, we can see that both the standard deviation of the exponential distribution and the theoretical variance of the distribution are very close. 
+
+- i.e Their is little or no variance in the data.
+
+## Distribution
+
+Our goal here is to show that the distribution of the simulation is approximately normal. In order to do this we want to compare the distribution of averages to the Central Limit Theorem (CLT). To do this we plot the distribution as a histogram along with a normal distribution. 
+
+The Central Limit Theorem essentially implies that 
+
+- **_The distribution of the means of large samples tends to be normal, regardless of the distribution of the parent population._**
+
+thus for any large sample of random observations taken from a population we calculate the arithmetic mean of these observed values. If we repeat this procedure a number of times and get a large number of such computed arithmetic means, the central limit theorem states that these computed means will be distributed as per an approximate normal distribution **(A bell curve)**, regardless of the distribution of the underlying parent population.
+
+The central limit theorem has three sub-theorems:
+
+- The mean of the sample means distribution is always equal to the mean of the parent population.
+- The standard deviation of the sample means distribution is always equal to the standard deviation of the parent population divided by the square root of the sample size.
+- The distribution of the sample means will increasingly approximate a normal distribution as the size, n, of samples increases. 
+
+thus what we expect to see is that due to the central limit theorem (CLT), the distribution of averages of `r sampleSize` exponentials is very close to a normal distribution OK, lets plot this and confirm... Below in **figure 2** we show that simulated exponential distribution has as characteristic negative exponential distribution. ** Figure 3** meanwhile clearly shows a nearly perfect normal distribution with minor skew. This aligns with the qqplot output of **figure 4** confirmed lies along a straight line.
+
+
+```{r Exponential_distribution_plot, warning=FALSE, error=FALSE, message=FALSE, fig.cap="Figure 2: Histogram of an Exponential Distribution"}
+
+# Create example exponential Distribution
+gp <- ggplot(as.vector(simulationData), aes(x=X1))
+gp <- gp + theme_wsj()  # Use the wall Street Journal Theme for the plot
+gp <- gp + geom_histogram(aes(y = ..density..), alpha = 0.2, binwidth = .15, colour="black", width=.5, prob = TRUE)
+gp <- gp + geom_density(aes(y=..density..)) + ggtitle("Histogram of\nExponential Distribution") 
+gp <- gp + stat_function(fun = dexp, arg = list(rate = lambda), size = 1, colour = "red")
+gp <- gp + geom_rug(col = "darkred", alpha = 0.1)
+print(gp)
+```
+
+```{r distribution_of_the_simulation_is_approximately_normal, fig.cap="Figure 3: Histogram of Row Means and Normal Distribution comparison"}
+gp <- ggplot(as.vector(simulationData), aes(x=row.Means)) 
+gp <- gp + theme_wsj()  # Use the wall Street Journal Theme for the plot
+gp <- gp + geom_histogram(aes(y = ..density..), alpha = 0.2, binwidth = .15, colour="black", width=.2 )
+# One thing we want to do is show the bin count above each bar of the histogram.
+# We do this by using the stat_bin() function, where we set the label to the
+# count of the bin as defined by the binwidth...
+gp <- gp + stat_bin(binwidth = .15,
+                    aes( y = (..density..),
+                         label = round(..density.. * 10, digits=1), 
+                         ymax = max(..density..) * 1.05 ), 
+                    geom  = "text", 
+                    size  = 3,
+                    vjust = -1.5)
+
+# Draw the simulated mean as a vertical line (red)
+gp <- gp + geom_vline(xintercept = mean(simulationData$row.Means), colour = 'red',size=.5, linetype = "longdash")
+# Draw the theoretical mean as a vertical line (red)
+gp <- gp + geom_vline(xintercept = mean(theoreticalMean), colour = 'Blue',size=.5, linetype = "longdash")
+
+# Now we create two lines to ploy the simulated distribution (red), and the
+# normal distribution (blue)
+gp <- gp + geom_line(aes(y = ..density.., colour = 'Simulated'), stat = 'Density', linetype = "longdash")
+gp <- gp + stat_function(geom = "line", fun = dnorm, arg = list(mean = theoreticalMean, sd = theoreticalSigma),
+              size = 1, aes(colour = 'Normal'), fill = NA, linetype = "longdash")
+gp <- gp + scale_colour_manual(name = 'Density', values = c('Blue', 'Red')) 
+# Here we create a plot title across two lines...
+title <- paste("Histogram")
+title2 <- paste("of Row Means")
+gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
+gp <- gp + theme(legend.position=c(0.75, 0.85), plot.title = element_text(size=20, lineheight=.8, face="bold"))
+# Now display the plot...
+print(gp)
+```
+
+### **_Answer_**: Question 3. Show that the distribution is approximately normal.
+
+As we can see above, the depicted histogram shows that the simulated sample approximates the normal distribution, this is due to the central limit theorem. The sample 
+mean is shown as a <span style="color:red">**RED**</span> dotted line, and the theoretical mean is the shown as a <span style="color:blue">**BLUE**</span>) dotted line.
+
+Thus, we can see that the simulated distribution approximates the normal distribution. 
+
+It is worth noting that whilst histogram and density plots are useful to visualize such distributions due to the depicted bell-shape appearance. It is often easier to judge if you can get the distribution to lie in a straight line. To do that you can use quantile-quantile plots (QQ plots). In the *R Language* we have several commands available relating to QQ plots; the first of these is `qqnorm()`, which takes a vector of numeric values and plots them against a set of theoretical quantiles from a normal distribution. The upshot is that you produce a series of points that appear in a perfectly straight line if your original data are normally distributed.
+
+``` {r qqplot, fig.cap="Figure 4: QQ Plot of Row Means"}
+
+y <- quantile(simulationData$row.Means[!is.na(simulationData$row.Means)], c(0.25, 0.75))
+x <- qnorm(c(0.25, 0.75))
+slope <- diff(y)/diff(x)
+int <- y[1L] - slope * x[1L]
+
+d <- data.frame(resids = simulationData$row.Means)
+
+gp <- ggplot(d, aes(sample = resids)) 
+gp <- gp + theme_wsj()  # Use the wall Street Journal Theme for the plot
+gp <- gp + stat_qq() 
+gp <- gp + geom_abline(slope = slope, intercept = int, color='red')
+title <- paste("QQ Plot")
+title2 <- paste("of Row Means")
+gp <- gp + ggtitle(paste0(title,"\n", title2, "\n"))
+gp <- gp + theme(legend.position=c(0.75, 0.85), plot.title = element_text(size=20, lineheight=.8, face="bold"))
+print(gp)       
+```
+                
+The above ggplot2 QQ plot shows a distribution of averages of **`r sampleSize`** exponential random variables. The straight <span style="color:red">**RED**</span> line is the standard normal distribution reference. From this, we deduce the population is normally distributed *(becuase the data is distributed along the line)*.
+
+In point 3, we focus on the difference between the distribution of a large collection of random exponentials and the distribution of a large collection of averages of 40 exponentials. 
+
+The simulated exponential distribution has as characteristic negative exponential distribution as depicted in figure 1a. On the other hand the distribution of the means of this simulation follow a nearly perfect normal distribution with an very minor right skew as we can see in figure 1b. The approximate normality of this distribution can by also confirmed by the normality test depicted in the Q-Q plot in figure 2.
+
+# Conclusions
+
+In conclusion we can make the following observations:
+
+1. We can deduce from the data presented that the distribution of the sample means will be normal in shape, regardless of the shape of the parent population, provided the sample size is large enough. A sample size of n = **`r sampleSize`** is a large enough distribution of sample means to create a normal distribution shape, even though the samples were drawn from an exponential distribution.
+1. The mean of the exponential distribution of sample means is identical to the mean of the parent population, the population from which the samples are drawn.
+1. The higher number of the simulation conducted, the “narrower” will is the spread of the distribution of sample means.
+
+
+**References:**
+
+- *R for Everyone: Advanced Analytics and Graphics*
+    - By: Jared P. Lander Publisher: Addison-Wesley Professional Pub. Date: December 19, 2013 Print ISBN-10: 0-321-88803-0
+- *Beginning R: The Statistical Programming Language* 
+    - By: Mark Gardener Publisher: Wrox Pub. Date: June 5, 2012 Print ISBN: 978-1-118-16430-3
+- *Mathematical Statistics with Resampling and R* 
+    - By: Laura Chihara; Tim Hesterberg Publisher: John Wiley & Sons Pub. Date: September 6, 2011 Print ISBN: 978-1-11-02985-5
+- *Think Stats, 2nd Edition* 
+    - By: Allen B. Downey Publisher: O'Reilly Media, Inc. Pub. Date: October 28, 2014 Print ISBN-13: 978-1-4919-0733-7
+
+
+# Environment
+
+``` {r Environment}
+# Display R session info
+sessionInfo()
+```
