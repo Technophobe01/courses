@@ -404,7 +404,7 @@ pandoc.table(displayTable,
 [2]: http://jn.nutrition.org/content/33/5/491.full.pdf
 [3]: http://en.wikipedia.org/wiki/Ascorbic_acid
 [4]: http://en.wikipedia.org/wiki/Odontoblast
-[5]: http://github
+[5]: https://github.com/Technophobe01/courses/tree/master/06_StatisticalInference/001_Course_Work
 [6]: http://cran.r-project.org/web/packages/tables/
 [7]: http://en.wikipedia.org/wiki/Mean
 [8]: http://en.wikipedia.org/wiki/Standard_deviation
