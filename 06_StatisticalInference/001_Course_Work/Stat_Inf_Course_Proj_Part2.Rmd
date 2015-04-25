@@ -1,0 +1,420 @@
+---
+title: 'Statistical Inference Course Project: Part 2'
+author: "Technophobe01"
+date: '`r Sys.Date()`'
+output:
+  pdf_document:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+  html_document:
+    fig_caption: yes
+    graphics: yes
+    number_sections: yes
+graphics: yes
+---
+
+```{r setOptions, echo=FALSE, echo=FALSE, message=FALSE, results='hide'}
+require(knitr)
+opts_chunk$set(cache=FALSE)
+require(knitcitations)
+cleanbib()
+```
+
+```{r Setup, echo=FALSE, error=FALSE, message=FALSE, results='hide'}
+setwd("~/dev/cousera/courses/06_StatisticalInference/001_Course_Work")
+
+requiredPackages <- c("ggplot2",   # Used to plot graphics 
+                      "ggthemes",  # Extra themes, scales and geoms for ggplot (Very cool!)
+                      "xtable",
+                      "dplyr",
+                      "compare",
+                      "Hmisc",
+                      "tables",
+                      "pander",
+                      "gplots",
+                      "HH",
+                      "Rmisc")
+
+ipak <- function(pkg){
+        new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+        if (length(new.pkg))
+                install.packages(new.pkg, dependencies = TRUE)
+        sapply(pkg, require, character.only = TRUE)
+}
+
+ipak(requiredPackages)
+```
+
+# Introduction
+The purpose of this document is to develop and answer the [Coursera Peer Assessment Part 2 of the Coursera Statistical Inference Course Project][0]. Our goal is to analyze the [ToothGrowth][1] data in the R datasets package. This reports source code is available via **[GitHub][5]**, if you wish to reveiw the markdown formatting in more detail.
+
+1. Load the ToothGrowth data and perform some basic exploratory data analyses 
+1. Provide a basic summary of the data.
+1. Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose. (Only use the techniques from class, even if there's other approaches worth considering)
+1. State your conclusions and the assumptions needed for your conclusions.
+
+## Data Set Description
+The [ToothGroth][1] dataset referenced by this document is derived from an original study *[The Journal of Nutrition - Crampton, E.W. (1947)][2]* The study investigated vitamin C intake of natutal (orange juice) and artificial ([ascorbic acid][3]) sources by means of a bioassay which measured the teeth growth in guinea pigs. Per the linked study, the length of [odontoblast cells][4] in 60 guinea pigs divided in 6 groups of 10 animals which were fed 3 dose levels of Vitamin C (0.5, 1 and 2 mg) with each of two delivery methods (orange juice or ascorbic acid.). The data set contains 60 obeservations on 3 variables.  
+
+| **Variable Name**   | **'R' Class**   | **Variable Description** |
+|-----------------|---------------------|-------------|
+| len 		| numeric 	        | Length of Odontoblast (Tooth) in Microns.
+| supp 		| factor 		| Supplement type - Orange Juice or Ascorbic Acid.
+| dose 		| numeric 		| Dose in Milligrams - 0.5mg, 1mg and 2mg.
+
+```{r Solution_mean_plot, echo=FALSE, echo=FALSE, message=FALSE, results='show', fig.align='center', fig.height=4, fig.width=6, fig.cap="Interaction plot comparing dose and delivery mechanism on tooth growth."}
+
+# We generate a mean plot to quickly derive whether their is a material impact 
+# of one or the other of the supplements. It helped that I read the original 
+# referenced research. Thanks go to Robert Kabacoff and his "R in Action" worth
+# reading.
+# 
+# The errorbars overlapped, so we use position_dodge to move them horizontally
+# (Minor Clean up)
+pd <- position_dodge(0.1) # move them .05 to the left and right
+
+# summarySE provides the standard deviation, standard error of the mean, and a
+# (default 95%) confidence interval
+tgc <- summarySE(ToothGrowth, measurevar="len", 
+                 groupvars=c("supp","dose"))
+gp <- ggplot(tgc, aes(x=dose, y=len, colour=supp, group=supp))
+gp <- gp + theme_wsj() 
+gp <- gp + geom_errorbar(aes(ymin=len-se, ymax=len+se), 
+                         colour="black", 
+                         width=.1, position=pd)
+gp <- gp + geom_line(position=pd)
+gp <- gp + geom_point(position=pd, size=3, shape=21, 
+                      fill="white") # 21 is a filled circle
+gp <- gp + xlab("Dose (mg)")
+gp <- gp + ylab("Tooth length")
+# Legend label, use darker colors
+gp <- gp + scale_colour_hue(name="Supplement type",
+                     breaks=c("OJ", "VC"),
+                     labels=c("Orange juice", "Ascorbic acid"),
+                     l=40)  # Use darker colors, lightness=40
+gp <- gp + ggtitle("The Effect of Vitamin C on Tooth Growth in Guinea Pigs")
+gp <- gp + expand_limits(y=0)                        # Expand y range
+gp <- gp + scale_y_continuous(breaks=0:20*4)         # Set tick every 4
+gp <- gp + theme(legend.position=c(.5, .1), 
+                 plot.title = element_text(size=8, 
+                                           lineheight=.8, face="bold"))
+gp <- gp + theme(legend.title = element_text(size = 8, face = 'bold'))
+gp <- gp + theme(legend.text = element_text(size = 8, face = 'bold'))
+gp <- gp + theme(axis.text = element_text(size = 6, face = 'bold'))
+
+print(gp)
+```
+### Load the ToothGrowth data and perform some basic exploratory data analyses 
+
+The mean plot (Fig. 1) provides a simple yet clear indication that tooth growth increases with the dose of ascorbic acid for both orange juice and vitamin C. For the 0.5mg and 1mg doses, orange juice produced more growth than Vitamin C. For 2mg of ascorbic acid, both delivery methods produced near identical growth.
+
+### Provide a basic summary of the data.
+
+A basic statistical summary of the [ToothGrowth][1] dataset is provided in Table 2. It details the [mean][7] **$\mu$**, [standard deviation][8] **$\sigma$**, [varience][9] **$\sigma^2$**, as well as the [mediun][10], min and max values of the dataset organised by supplement and dose. Please nte that **Table 2** is generated using the R [**table package**][6] developed by Duncan Murdock. 
+
+```{r DataSummary, echo=FALSE, warning=FALSE, message=FALSE, results='asis', fig.width=4, fig.height=4, fig.align='center'}
+
+# There is a lot going on here. I strongly recommend you read the tables 
+# documentation and vignette. The package was created by Duncan Murdoch. 
+# Red[http://cran.r-project.org/web/packages/tables/]
+# 
+# The tabular function trys to convert the table argument to a formula, then 
+# passes it and all the other arguments to tabular.formula() method, which does 
+# most of the work.
+# 
+# tb <- tabular(data=ToothGrowth, (Supplement=(supp))*(dose=(as.factor(dose)+1))
+# ~ (N = n=1) + *Format(digits=2)*Heading()*len))
+# 
+# The first two line are important as they set the stage, first we extract 
+# the suplement data, and then dose (based on the factor supp), from the 
+# ToothGrowth data frame. We then calaculate the lenth of the vectors we are 
+# working with (30 for OJ, 30 for VC) i.e. (~ (N = n=1)).
+# 
+# Now we define the columns... A subtle point here is that we use 'len' but we
+# ommit a heading for len of heading() as empty. We then apply mean to
+# values of len to create the mean values column, next sd, next var, next
+# mediumm, min, max... 
+
+tb <- tabular(data=ToothGrowth,
+              (Supplement=(supp))*(dose=(as.factor(dose)+1)) ~ (N = n=1) + 
+                      (Heading()*len)*((Heading("$\\mu$")*mean) +
+                                               (Heading("$\\sigma$")*sd) +
+                                               (Heading("$\\sigma^2$")*var) +
+                                               median+min+max))
+
+# Note: You can pass tabular output through the Hmisc::latex() function (Harrell,
+# 2011, Harrell et~al., 2011) to produce LATEX output, which when processed by
+# pdflatex will produce nice tables in pdf. I prefer to use pandoc for printing
+# as this works well across pdf and html output.
+
+pandoc.table(as.matrix(tb), caption = "ToothGrowth Summary Statistics", 
+             style = "multiline", 
+             round=justify, split.tables = 100)
+```
+
+\pagebreak
+
+### Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose.
+
+```{r echo=FALSE, message=FALSE}
+
+# To setup the confidence interval testing we first break out the data by
+# suplement, then doc creating a list of entries we can use to undertake the
+# confidence and hypothesis tessting.
+
+# Orange Juice Data by Dose Size
+OJ_0.5 <- ToothGrowth %>% filter(dose==0.5, supp=='OJ') %>% select(len)
+OJ_1.0 <- ToothGrowth %>% filter(dose==1.0, supp=='OJ') %>% select(len)
+OJ_2.0 <- ToothGrowth %>% filter(dose==2.0, supp=='OJ') %>% select(len)
+
+# Vitamin C Data by Dose Size
+VC_0.5 <- ToothGrowth %>% filter(dose==0.5, supp=='VC') %>% select(len)
+VC_1.0 <- ToothGrowth %>% filter(dose==1.0, supp=='VC') %>% select(len)
+VC_2.0 <- ToothGrowth %>% filter(dose==2.0, supp=='VC') %>% select(len)
+
+```
+#### Confidence Interval Tests  
+
+We wish to assess the significance of the mean differences between the different vitamin C sources. The results found the 0.5 and 1 doses of the 2 different sources were significant with **P Values** of **`r t.test(OJ_0.5, VC_0.5)$p.value`** (.5mg) and **`r t.test(OJ_1.0, VC_1.0)$p.value`** (1mg) respectively. However there was no significant differences at the 2.0mg dose **`r t.test(OJ_2.0, VC_2.0)$p.value`** (2mg). 
+
+#### Hypothesis Tests
+
+What is our hypotheis? Well, judging from the data above, we would like to confirm that:
+
+1. There is a difference in tooth growth when different **suppliments** are used
+1. There is a difference in tooth growth when different **dose** amounts are used?
+              
+##### Supliment Hypothesis Test
+
+If we review the answer below, we can see that the p-value result `r t.test(ToothGrowth$len ~ ToothGrowth$supp, paired=T)$p.value` is significant, thus we can reject the the null hypothesis. i.e. By rejecting the Null hypothesis we are concluding there are grounds to say that there *is* a relationship. i.e. Orange juice appears to be a better supplement for tooth growth than vitamin C.
+
+```{r sumplementHypothesis_test, echo=FALSE, message=FALSE, results='asis'} 
+
+# Perform suplement t.test 
+
+t1 <- t.test(ToothGrowth$len ~ ToothGrowth$supp, paired=T)
+displayTable <- data.frame("Test statistic"=c(t1$statistic), 
+                       "df"=c(t1$parameter),
+                       "P Value"=c(t1$p.value),
+                       row.names=c("Supplement"))
+displayTable <- cbind(displayTable,"Alternate hypothesis"=c(t1$alternative))
+pandoc.table(displayTable, 
+             style = "multiline", 
+             split.tables = 100)
+
+```
+
+##### Dose Hypothesis Test
+
+To discover the truth of the second hypothesis, We really need to compare the three doses against each other, two at a time. We can use a paired two-sided t-test for this, creating three groups G1=(0.5, 1), G2=(0.5, 2), G3=(1, 2). i.e. Our intent is to determine if there is a difference in tooth growth when different **dose** amounts are used?
+
+```{r doseHypothesis, echo=FALSE, message=FALSE, results='asis' }
+
+ToothGrowth.doses_0.5_1.0 <- ToothGrowth %>% filter(dose==0.5 | dose==1)
+ToothGrowth.doses_0.5_2.0 <- ToothGrowth %>% filter(dose==0.5 | dose==2)
+ToothGrowth.doses_1.0_2.0 <- ToothGrowth %>% filter(dose==1 | dose==2)
+
+t1 <- t.test(len ~ dose, data=ToothGrowth.doses_0.5_1.0, paired=T)
+t2 <- t.test(len ~ dose, data=ToothGrowth.doses_0.5_2.0, paired=T)
+t3 <- t.test(len ~ dose, data=ToothGrowth.doses_1.0_2.0, paired=T)
+
+rm(displayTable)
+displayTable <- data.frame("Test statistic"=c(t1$statistic, t2$statistic, t3$statistic), 
+                       "df"=c(t1$parameter,t2$parameter,t3$parameter),
+                       "P Value"=c(t1$p.value,t2$p.value,t3$p.value),
+                       "Conf A"=c(t1$conf.int[2],t2$conf.int[2],t3$conf.int[2]),
+                       "Conf B"=c(t1$conf.int[1],t2$conf.int[1],t3$conf.int[1]))
+displayTable <- cbind(displayTable,"Alternate hypothesis"=c(t1$alternative, t2$alternative, t3$alternative))
+pandoc.table(displayTable, 
+             style = "multiline", 
+             split.tables = 100)
+```
+
+Here, we observe an increase in growth with increasing dose (due to small P Value). The 95% confidence interval ranges however are work reviewing in light of figure 1. from **(`r round(t2$conf.int[2],2)`,  `r round(t2$conf.int[1],2)`)** comparing dose 2.0 to 0.5 dose, to **(`r round(t3$conf.int[2],2)`,  `r round(t3$conf.int[1],2)`)** comparing dose 2.0 to 1.0. We should however note that the above test values assume there is no interaction between supplement and dose, which **Figure 1** demonstrates is not true. 
+
+### State your conclusions and the assumptions needed for your conclusions.
+
+The data and graphs indicate that tooth growth increases with the dose of ascorbic acid for both orange juice and Vitamin C. For the 0.5 and 1mg doses, orange juice produced more tooth growth than Vitamin C. For 2mg of ascorbic acid, both delivery methods produced identical growth.
+
+Thus, we observe that vitamin c intake from a natural sourse such as orange juice as oposed to a synthetic ascorbic acid was shown to be significant at lower doses but no difference was observed at higher doses (2mg) dose. Here we assume that all the animals tested were equivalent between groups.  Factors such as health, age and gender are not available, if they were these factors might modify our conclusions.
+
+\newpage
+
+# Appendix A: Code and Environment
+
+## Supporting Code
+
+### Code Setup
+
+This reports source code is available via **[GitHub][5]**, if you wish to understand the markdown formatting in more detail.
+
+### Load the ToothGrowth data and perform some basic exploratory data analyses
+
+```{r Solution_mean_plot_2, eval=FALSE}
+# We generate a mean plot to quickly derive whether their is a material impact 
+# of one or the other of the supplements. It helped that I read the original 
+# referenced research. Thanks go to Robert Kabacoff and his "R in Action" worth
+# reading.
+# 
+# The errorbars overlapped, so we use position_dodge to move them horizontally
+# (Minor Clean up)
+pd <- position_dodge(0.1) # move them .05 to the left and right
+
+# summarySE provides the standard deviation, standard error of the mean, and a
+# (default 95%) confidence interval
+tgc <- summarySE(ToothGrowth, measurevar="len", 
+                 groupvars=c("supp","dose"))
+gp <- ggplot(tgc, aes(x=dose, y=len, colour=supp, group=supp))
+gp <- gp + theme_wsj() 
+gp <- gp + geom_errorbar(aes(ymin=len-se, ymax=len+se), 
+                         colour="black", 
+                         width=.1, position=pd)
+gp <- gp + geom_line(position=pd)
+gp <- gp + geom_point(position=pd, size=3, shape=21, 
+                      fill="white") # 21 is a filled circle
+gp <- gp + xlab("Dose (mg)")
+gp <- gp + ylab("Tooth length")
+# Legend label, use darker colors
+gp <- gp + scale_colour_hue(name="Supplement type",
+                     breaks=c("OJ", "VC"),
+                     labels=c("Orange juice", "Ascorbic acid"),
+                     l=40)  # Use darker colors, lightness=40
+gp <- gp + ggtitle("The Effect of Vitamin C on Tooth Growth in Guinea Pigs")
+gp <- gp + expand_limits(y=0)                        # Expand y range
+gp <- gp + scale_y_continuous(breaks=0:20*4)         # Set tick every 4
+gp <- gp + theme(legend.position=c(.5, .1), 
+                 plot.title = element_text(size=8, 
+                                           lineheight=.8, face="bold"))
+gp <- gp + theme(legend.title = element_text(size = 8, face = 'bold'))
+gp <- gp + theme(legend.text = element_text(size = 8, face = 'bold'))
+gp <- gp + theme(axis.text = element_text(size = 6, face = 'bold'))
+
+print(gp)
+```
+### Provide a basic summary of the data.
+
+```{r DataSummary2, eval=FALSE}
+
+# There is a lot going on here. I strongly recommend you read the tables 
+# documentation and vignette. The package was created by Duncan Murdoch. 
+# Red[http://cran.r-project.org/web/packages/tables/]
+# 
+# The tabular function trys to convert the table argument to a formula, then 
+# passes it and all the other arguments to tabular.formula() method, which does 
+# most of the work.
+# 
+# tb <- tabular(data=ToothGrowth, (Supplement=(supp))*(dose=(as.factor(dose)+1))
+# ~ (N = n=1) + (Justify(r)*Format(digits=2)*Heading()*len))
+# 
+# The first two line are important as they set the stage, first we extract 
+# the suplement data, and then dose (based on the factor supp), from the 
+# ToothGrowth data frame. We then calaculate the lenth of the vectors we are 
+# working with (30 for OJ, 30 for VC) i.e. (~ (N = n=1)).
+# 
+# Now we define the columns... A subtle point here is that we use 'len' but we
+# ommit a heading for len by specing heading() as empty. We then apply mean to
+# values of len to create the mean values column, next sd, next var, next
+# mediumm, min, max... 
+
+tabular(data=ToothGrowth,
+        (Supplement=(supp))*(dose=(as.factor(dose)+1)) ~ (N = n=1) + 
+                (Format(digits=2)*Heading()*len)*((Heading("$\\mu$")*mean)+
+                                                          (Heading("$\\sigma$")*sd)+
+                                                          (Heading("$\\sigma^2$")*var)+
+                                                          median+min+max))
+
+# Note: You can pass tabular output through the Hmisc::latex() function (Harrell,
+# 2011, Harrell et~al., 2011) to produce LATEX output, which when processed by
+# pdflatex will produce nice tables in pdf. I prefer to use pandoc for printing
+# as this works well across pdf and html output.
+
+pandoc.table(as.matrix(tb), caption = "ToothGrowth Summary Statistics", 
+             style = "multiline", 
+             round=justify, split.tables = 100)
+
+```
+
+### Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose. 
+
+```{r sumplementHypothesis_test2, eval=FALSE} 
+
+# Perform suplement t.test where we compare length of tooth growth to the supplement used
+
+t1 <- t.test(ToothGrowth$len ~ ToothGrowth$supp, paired=T)
+displayTable <- data.frame("Test statistic"=c(t1$statistic), 
+                       "df"=c(t1$parameter),
+                       "P Value"=c(t1$p.value),
+                       row.names=c("Supplement"))
+displayTable <- cbind(displayTable,"Alternate hypothesis"=c(t1$alternative))
+pandoc.table(displayTable, 
+             style = "multiline", 
+             split.tables = 100)
+
+```
+
+```{r doseHypothesis2, eval=FALSE }
+
+# Perform dose t.test group test where we compare length of tooth growth by group
+
+ToothGrowth.doses_0.5_1.0 <- ToothGrowth %>% filter(dose==0.5 | dose==1)
+ToothGrowth.doses_0.5_2.0 <- ToothGrowth %>% filter(dose==0.5 | dose==2)
+ToothGrowth.doses_1.0_2.0 <- ToothGrowth %>% filter(dose==1 | dose==2)
+
+t1 <- t.test(len ~ dose, data=ToothGrowth.doses_0.5_1.0, paired=T)
+t2 <- t.test(len ~ dose, data=ToothGrowth.doses_0.5_2.0, paired=T)
+t3 <- t.test(len ~ dose, data=ToothGrowth.doses_1.0_2.0, paired=T)
+
+rm(displayTable)
+displayTable <- data.frame("Test statistic"=c(t1$statistic, t2$statistic, t3$statistic), 
+                       "df"=c(t1$parameter,t2$parameter,t3$parameter),
+                       "P Value"=c(t1$p.value,t2$p.value,t3$p.value),
+                       "Conf A"=c(t1$conf.int[2],t2$conf.int[2],t3$conf.int[2]),
+                       "Conf B"=c(t1$conf.int[1],t2$conf.int[1],t3$conf.int[1]))
+displayTable <- cbind(displayTable,"Alternate hypothesis"=c(t1$alternative, t2$alternative, t3$alternative))
+pandoc.table(displayTable, 
+             style = "multiline", 
+             split.tables = 100)
+```
+
+## **References**
+
+- *R in Action*
+
+    - By: Robert Kabacoff Publisher: Manning Publications Pub. Date: August 24, 2011, ISBN-10: 1-935182-39-0
+
+- *R for Everyone: Advanced Analytics and Graphics*  
+
+    - By: Jared P. Lander Publisher: Addison-Wesley Professional Pub. Date: December 19, 2013 Print ISBN-10: 0-321-88803-0
+
+- *Beginning R: The Statistical Programming Language* 
+
+    - By: Mark Gardener Publisher: Wrox Pub. Date: June 5, 2012 Print ISBN: 978-1-118-16430-3
+
+- *Mathematical Statistics with Resampling and R*     
+    
+    - By: Laura Chihara; Tim Hesterberg Publisher: John Wiley & Sons Pub. Date: September 6, 2011 Print ISBN: 978-1-11-02985-5
+
+- *Think Stats, 2nd Edition* 
+    
+    - By: Allen B. Downey Publisher: O'Reilly Media, Inc. Pub. Date: October 28, 2014 Print ISBN-13: 978-1-4919-0733-7
+
+[0]: https://class.coursera.org/statinference-013
+[1]: https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/ToothGrowth.html
+[2]: http://jn.nutrition.org/content/33/5/491.full.pdf
+[3]: http://en.wikipedia.org/wiki/Ascorbic_acid
+[4]: http://en.wikipedia.org/wiki/Odontoblast
+[5]: http://github
+[6]: http://cran.r-project.org/web/packages/tables/
+[7]: http://en.wikipedia.org/wiki/Mean
+[8]: http://en.wikipedia.org/wiki/Standard_deviation
+[9]: http://en.wikipedia.org/wiki/Variance
+[10]: http://en.wikipedia.org/wiki/Median
+
+## Environment
+
+``` {r Environment}
+# Display R version info
+R.version
+```
+
