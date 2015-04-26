@@ -3,13 +3,13 @@ title: 'Statistical Inference Course Project: Part 1'
 author: "Technophobe01"
 date: '`r Sys.Date()`'
 output:
-  pdf_document:
-    fig_caption: yes
-    number_sections: yes
   html_document:
     fig_caption: yes
     number_sections: yes
     toc: no
+  pdf_document:
+    fig_caption: yes
+    number_sections: yes
 ---
 
 ```{r setOptions, echo=FALSE, message=FALSE, results='hide'}
@@ -331,14 +331,6 @@ print(gp)
 - *R in Action*
 
     - By: Robert Kabacoff Publisher: Manning Publications Pub. Date: August 24, 2011, ISBN-10: 1-935182-39-0
-
-- *R for Everyone: Advanced Analytics and Graphics*  
-
-    - By: Jared P. Lander Publisher: Addison-Wesley Professional Pub. Date: December 19, 2013 Print ISBN-10: 0-321-88803-0
-
-- *Beginning R: The Statistical Programming Language* 
-
-    - By: Mark Gardener Publisher: Wrox Pub. Date: June 5, 2012 Print ISBN: 978-1-118-16430-3
 
 - *Mathematical Statistics with Resampling and R*     
     

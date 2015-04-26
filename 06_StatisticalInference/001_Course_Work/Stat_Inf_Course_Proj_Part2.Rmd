@@ -3,14 +3,14 @@ title: 'Statistical Inference Course Project: Part 2'
 author: "Technophobe01"
 date: '`r Sys.Date()`'
 output:
-  pdf_document:
-    fig_caption: yes
-    number_sections: yes
-    toc: yes
   html_document:
     fig_caption: yes
     graphics: yes
     number_sections: yes
+  pdf_document:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
 graphics: yes
 ---
 
@@ -104,14 +104,15 @@ gp <- gp + theme(legend.text = element_text(size = 8, face = 'bold'))
 gp <- gp + theme(axis.text = element_text(size = 6, face = 'bold'))
 
 print(gp)
-```
+```  
+
 ### Load the ToothGrowth data and perform some basic exploratory data analyses 
 
 The mean plot (Fig. 1) provides a simple yet clear indication that tooth growth increases with the dose of ascorbic acid for both orange juice and vitamin C. For the 0.5mg and 1mg doses, orange juice produced more growth than Vitamin C. For 2mg of ascorbic acid, both delivery methods produced near identical growth.
 
 ### Provide a basic summary of the data.
 
-A basic statistical summary of the [ToothGrowth][1] dataset is provided in Table 2. It details the [mean][7] **$\mu$**, [standard deviation][8] **$\sigma$**, [varience][9] **$\sigma^2$**, as well as the [mediun][10], min and max values of the dataset organised by supplement and dose. Please nte that **Table 2** is generated using the R [**table package**][6] developed by Duncan Murdock. 
+A basic statistical summary of the [ToothGrowth][1] dataset is provided in Table 2. It details the [mean][7] **$\mu$**, [standard deviation][8] **$\sigma$**, [varience][9] **$\sigma^2$**, as well as the [mediun][10], min and max values of the dataset organised by supplement and dose.  
 
 ```{r DataSummary, echo=FALSE, warning=FALSE, message=FALSE, results='asis', fig.width=4, fig.height=4, fig.align='center'}
 
@@ -247,7 +248,7 @@ Thus, we observe that vitamin c intake from a natural sourse such as orange juic
 
 ### Code Setup
 
-This reports source code is available via **[GitHub][5]**, if you wish to understand the markdown formatting in more detail.
+This reports source code is available via **[GitHub][5]**, if you wish to understand the markdown formatting in more detail.  
 
 ### Load the ToothGrowth data and perform some basic exploratory data analyses
 
@@ -300,13 +301,6 @@ print(gp)
 # documentation and vignette. The package was created by Duncan Murdoch. 
 # Red[http://cran.r-project.org/web/packages/tables/]
 # 
-# The tabular function trys to convert the table argument to a formula, then 
-# passes it and all the other arguments to tabular.formula() method, which does 
-# most of the work.
-# 
-# tb <- tabular(data=ToothGrowth, (Supplement=(supp))*(dose=(as.factor(dose)+1))
-# ~ (N = n=1) + (Justify(r)*Format(digits=2)*Heading()*len))
-# 
 # The first two line are important as they set the stage, first we extract 
 # the suplement data, and then dose (based on the factor supp), from the 
 # ToothGrowth data frame. We then calaculate the lenth of the vectors we are 
@@ -356,7 +350,6 @@ pandoc.table(displayTable,
 ```{r doseHypothesis2, eval=FALSE }
 
 # Perform dose t.test group test where we compare length of tooth growth by group
-
 ToothGrowth.doses_0.5_1.0 <- ToothGrowth %>% filter(dose==0.5 | dose==1)
 ToothGrowth.doses_0.5_2.0 <- ToothGrowth %>% filter(dose==0.5 | dose==2)
 ToothGrowth.doses_1.0_2.0 <- ToothGrowth %>% filter(dose==1 | dose==2)
@@ -371,7 +364,8 @@ displayTable <- data.frame("Test statistic"=c(t1$statistic, t2$statistic, t3$sta
                        "P Value"=c(t1$p.value,t2$p.value,t3$p.value),
                        "Conf A"=c(t1$conf.int[2],t2$conf.int[2],t3$conf.int[2]),
                        "Conf B"=c(t1$conf.int[1],t2$conf.int[1],t3$conf.int[1]))
-displayTable <- cbind(displayTable,"Alternate hypothesis"=c(t1$alternative, t2$alternative, t3$alternative))
+displayTable <- cbind(displayTable,"Alternate hypothesis"=c(t1$alternative, 
+                                                            t2$alternative, t3$alternative))
 pandoc.table(displayTable, 
              style = "multiline", 
              split.tables = 100)
@@ -382,14 +376,6 @@ pandoc.table(displayTable,
 - *R in Action*
 
     - By: Robert Kabacoff Publisher: Manning Publications Pub. Date: August 24, 2011, ISBN-10: 1-935182-39-0
-
-- *R for Everyone: Advanced Analytics and Graphics*  
-
-    - By: Jared P. Lander Publisher: Addison-Wesley Professional Pub. Date: December 19, 2013 Print ISBN-10: 0-321-88803-0
-
-- *Beginning R: The Statistical Programming Language* 
-
-    - By: Mark Gardener Publisher: Wrox Pub. Date: June 5, 2012 Print ISBN: 978-1-118-16430-3
 
 - *Mathematical Statistics with Resampling and R*     
     
@@ -413,7 +399,7 @@ pandoc.table(displayTable,
 
 ## Environment
 
-``` {r Environment}
+```{r Environment, eval=TRUE, echo=FALSE, message=FALSE}
 # Display R version info
 R.version
 ```
