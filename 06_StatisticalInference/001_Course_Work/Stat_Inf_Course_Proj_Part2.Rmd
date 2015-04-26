@@ -3,14 +3,14 @@ title: 'Statistical Inference Course Project: Part 2'
 author: "Technophobe01"
 date: '`r Sys.Date()`'
 output:
-  html_document:
-    fig_caption: yes
-    graphics: yes
-    number_sections: yes
   pdf_document:
     fig_caption: yes
     number_sections: yes
     toc: yes
+  html_document:
+    fig_caption: yes
+    graphics: yes
+    number_sections: yes
 graphics: yes
 ---
 
@@ -208,7 +208,7 @@ pandoc.table(displayTable,
 
 ##### Dose Hypothesis Test
 
-To discover the truth of the second hypothesis, We really need to compare the three doses against each other, two at a time. We can use a paired two-sided t-test for this, creating three groups G1=(0.5, 1), G2=(0.5, 2), G3=(1, 2). i.e. Our intent is to determine if there is a difference in tooth growth when different **dose** amounts are used?
+To discover the truth of the second hypothesis, We really need to compare the three doses against each other, two at a time. We can use a paired two-sided t-test for this, creating three groups (0.5mg, 1.0mg), (0.5mg, 2.0mg), and (1.0mg, 2.0mg). i.e. Our intent is to determine if there is a difference in tooth growth when different **dose** amounts are used?
 
 ```{r doseHypothesis, echo=FALSE, message=FALSE, results='asis' }
 
@@ -232,11 +232,11 @@ pandoc.table(displayTable,
              split.tables = 100)
 ```
 
-Here, we observe an increase in growth with increasing dose (due to small P Value). The 95% confidence interval ranges however are work reviewing in light of figure 1. from **(`r round(t2$conf.int[2],2)`,  `r round(t2$conf.int[1],2)`)** comparing dose 2.0 to 0.5 dose, to **(`r round(t3$conf.int[2],2)`,  `r round(t3$conf.int[1],2)`)** comparing dose 2.0 to 1.0. We should however note that the above test values assume there is no interaction between supplement and dose, which **Figure 1** demonstrates is not true. 
+Here, we observe an increase in growth with increasing dose (due to small P Value). The 95% confidence interval ranges however are worth reviewing in light of figure 1. from **(`r round(t2$conf.int[2],2)`,  `r round(t2$conf.int[1],2)`)** comparing dose 2.0 to 0.5 dose, to **(`r round(t3$conf.int[2],2)`,  `r round(t3$conf.int[1],2)`)** comparing dose 2.0 to 1.0. We should however note that the above test values assume there is no interaction between supplement and dose, which **Figure 1** demonstrates is not true. 
 
 ### State your conclusions and the assumptions needed for your conclusions.
 
-The data and graphs indicate that tooth growth increases with the dose of ascorbic acid for both orange juice and Vitamin C. For the 0.5 and 1mg doses, orange juice produced more tooth growth than Vitamin C. For 2mg of ascorbic acid, both delivery methods produced identical growth.
+The data and graphs indicate that tooth growth increases with the dose of ascorbic acid for both orange juice and Vitamin C. For the 0.5mg and 1.0mg doses, orange juice produced more tooth growth than Vitamin C. For 2.0mg of ascorbic acid, both delivery methods produced identical growth.
 
 Thus, we observe that vitamin c intake from a natural sourse such as orange juice as oposed to a synthetic ascorbic acid was shown to be significant at lower doses but no difference was observed at higher doses (2mg) dose. Here we assume that all the animals tested were equivalent between groups.  Factors such as health, age and gender are not available, if they were these factors might modify our conclusions.
 
