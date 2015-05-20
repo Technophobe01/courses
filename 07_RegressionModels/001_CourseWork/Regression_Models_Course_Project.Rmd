@@ -3,10 +3,10 @@ title: "Regression Models Course Project"
 author: "Technophobe01"
 date: '`r Sys.Date()`'
 output:
+  html_document: default
   pdf_document:
     fig_caption: yes
     number_sections: yes
-  html_document: default
 header-includes: \usepackage[compact]{titlesec}
 ---
 
@@ -49,18 +49,14 @@ ipak <- function(pkg){
 ipak(requiredPackages)
 ```
 
-# Introduction
+# Executive Summary - 1974 Motor Trend Data in Review 
 
-This document develops and answers the [John Hopkins - Coursera Regression Models - Course Project][0]. The goal of the report is to illustrate via simulation and associated explanatory text the properties of the [mtcars][1] dataset. The dataset is derived from the *[Henderson and Velleman (1981), Building multiple regression models interactively. Biometrics, 37, 391–411. ][3]* study. Our task is to explore the relationship between a set of variables and miles per gallon (MPG). _**Our primary goal is to ask and answer the following questions in the context of working for Motor Trend, a magazine about the automobile industry**_. 
+This report was requested to enable a review of the 1974 magazine data on past car mpg performance and changes in vehicle efficiency. It address to core quesitons:
 
 1. Is an automatic or manual transmission better for MPG?
 1. Quantify the MPG difference between automatic and manual transmissions.  
 
-Note: The report source code is available via **[GitHub][2]** for deeper review. 
-
-## Executive Summary - 1974 Motor Trend Data in Review 
-
-This report was requested to enable a review of the 1974 magazine data on past car mpg performance and changes in vehicle efficiency. Based upon our analysis we conclude that in 1974: 
+Based upon our analysis we conclude that in 1974: 
 
 1. _**Manual tranmisssions were better for MPG**_.
 1. Transmission, weight and quarter mile time significantly influenced mpg effienciency.
@@ -69,7 +65,7 @@ This report was requested to enable a review of the 1974 magazine data on past c
 
 **Conclusion:** In 1974, cars that were lighter in weight with a manual transmission and cars that were heavier in weight with an automatic transmission had higher MPG values. See: Appendix A, Figure 2.
 
-# Analysis
+Note: The report source code is available via **[GitHub][2]** for deeper review. 
 
 ## Data Set Description
 
@@ -107,9 +103,7 @@ pandoc.table(displayTable,
 
 ```
 
-The t-test **p-value** result of **`r t1$p.value`** in combination with a confidence value of **`r attr(t1$conf.int, "conf.level" )*100`%**, indicate that we can be confident that the probability of chance is low.  We conclude that automatic transmissions **did** have lower **MPG** in 1974 than manuals, what we were unable to determine from this initial testing is what exactly was causing the correlation. 
-
-We checked to see if automobile weight in 1974 _**correlated**_ with _**MPG**_ efficiency. **Appendix A, Figure 2** shows that in 1974 automobile weight did correlate with MPG for both manual and automatic cars. Here we used a linear model to depict the manual and automatic trend lines.
+The t-test **p-value** result of **`r t1$p.value`** in combination with a confidence value of **`r attr(t1$conf.int, "conf.level" )*100`%**, indicate that we can be confident that the probability of chance is low.  We conclude that automatic transmissions **did** have lower **MPG** in 1974 than manuals, what we were unable to determine from this initial testing is what exactly was causing the correlation. We checked to see if automobile weight in 1974 _**correlated**_ with _**MPG**_ efficiency. **Appendix A, Figure 2** shows that in 1974 automobile weight did correlate with MPG for both manual and automatic cars. Here we used a linear model to depict the manual and automatic trend lines.
 
 ### Answer: Quantify the MPG difference between automatic and manual transmissions. 
 
@@ -147,6 +141,20 @@ That is, a manual transmission car that weighs 2500 lbs has, with a qsec of 16.5
 predict(finalModel)
 
 ```
+## Residual Analysis / Diagnostics
+
+To wrap up, we ran a model fit, we can verify the following underlying assumptions:
+
+1. The Residuals vs. Fitted plot shows no consistent pattern, in support of accuracy of the independence.
+1. The Normal Q-Q plot indicates that the residuals are normally distributed to the line.
+1. The Scale-Location plot confirms the constant variance assumption, points are randomly distributed.
+1. The Residuals vs. Leverage implies no outliers are present, as all values fall well within the 0.5 bands.
+1. We conclude that we do not have influential observations based on the `dfbetas` result of `0`. `dfbetas` is a measure of influence of the observations on the regression coefficients. The thumb rule for the `dfbetas is that if their absolute value exceeds 1, the observations have significant influence on the covariates.
+
+```{r FinalCheck, echo=FALSE, results='hide'}
+sum((abs(dfbetas(finalModel)))>1)
+```
+
 \pagebreak
 
 # Appendix A
@@ -236,9 +244,11 @@ print(gp)
 
 
 ```{r Exploratory_Fit_plot, fig.width=6, fig.height=6, fig.cap="Exploratory Model Fit Plots"}
-bestfit <- lm(mpg~am + wt + qsec, data = mtcars)
+
+bestfit <- lm(mpg ~ wt + qsec + am + wt:am, data=mtcars)
 par(mfrow = c(2,2))
 plot(bestfit)
+
 ```   
 
 # **References**
@@ -261,7 +271,7 @@ plot(bestfit)
 
 [0]: https://class.coursera.org/regmods-014
 [1]: http://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html
-[2]: https://github.com/Technophobe01/courses/tree/master/07_RegressionModels/001_Course_Work
+[2]: https://github.com/Technophobe01/courses/tree/master/07_RegressionModels/001_CourseWork
 [3]: http://www.jstor.org/discover/10.2307/2530428?uid=3739960&uid=2129&uid=2&uid=70&uid=4&uid=3739256&sid=21106429238751
 [4]: http://www.washingtonpost.com/blogs/wonkblog/wp/2013/12/13/cars-in-the-u-s-are-more-fuel-efficient-than-ever-heres-how-it-happened/
 [5]: https://www.fueleconomy.gov/feg/atv.shtml
