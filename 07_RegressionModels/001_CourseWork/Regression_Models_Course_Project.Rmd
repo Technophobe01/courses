@@ -3,10 +3,10 @@ title: "Regression Models Course Project"
 author: "Technophobe01"
 date: '`r Sys.Date()`'
 output:
-  html_document: default
   pdf_document:
     fig_caption: yes
     number_sections: yes
+  html_document: default
 header-includes: \usepackage[compact]{titlesec}
 ---
 
@@ -79,7 +79,7 @@ Our initial goal was to test the hypothesis that cars in 1974 with an automatic 
 
 The box plot (Appendix A, Figure 1.) provides a simple yet clear indication that automatic cars from the 1974 data set had lower mpg effienciency (**Automatic Transmission Median: 17.15 mpg**) than the manual cars reviewed (**Manual Transmission Median: 24.39 mpg**). Based on figure 1 we appear to have a clear hypothesis that automatic cars had a lower miles per gallon, and therefore a lower fuel efficiency, than manual cars did. i.e (24.39mpg - 17.15mpg creates a 7.24mpg manual transmission advantage. _The median is depicted as a thick line in figure 1, the edges of the box show the 25th and 75th quantiles of the data respectively_.   
 
-Did lower automatic transmission mpg effienency in 1974 data happened by random chance? To try to confirm, we performed a **t.test()** - `t.test(mpg ~ am, data=mtcars)`. Our goal being to determine if MPG results relied on having an automatic or manual transmission. In essence, we wanted to try to refute that random chance created the inference depicted in figure 1.
+Did lower automatic transmission mpg efficiency occur in the data by random chance? To try to confirm, we performed a **t.test()** - `t.test(mpg ~ am, data=mtcars)`. Our goal being to determine if MPG results relied on having an automatic or manual transmission. In essence, we wanted to try to refute that random chance created the inference depicted in figure 1.
 
 ```{r T_Test_MPG_MANUAL-Automatic, results='asis'}
 
