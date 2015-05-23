@@ -4,7 +4,7 @@ author: "Technophobe01"
 date: '`r Sys.Date()`'
 output:
   pdf_document:
-    fig_caption: yes
+    fig_caption: no
     number_sections: yes
   html_document: default
 header-includes: \usepackage[compact]{titlesec}
@@ -12,8 +12,10 @@ header-includes: \usepackage[compact]{titlesec}
 
 ```{r setOptions, echo=FALSE, message=FALSE, results='hide'}
 require(knitr)
-opts_chunk$set(fig.width=6, fig.height=3, 
+opts_chunk$set(fig.width=8, fig.height=5, 
                fig.path='Figs/',
+# Dev Setup / Production setup
+#               cache=FALSE, echo=TRUE, warning=TRUE, message=TRUE, results='show')
                cache=FALSE, echo=FALSE, warning=FALSE, message=FALSE, results='show')
 require(knitcitations)
 cleanbib()
@@ -28,6 +30,7 @@ data("mtcars")
 # Load the required R packages...
 #
 requiredPackages <- c("ggplot2",   # Used to plot graphics 
+                      "gtable",
                       "ggthemes",  # Extra themes, scales and geoms for ggplot (Very cool!)
                       "xtable",
                       "dplyr",
@@ -51,7 +54,7 @@ ipak(requiredPackages)
 
 # Executive Summary - 1974 Motor Trend Data in Review 
 
-This report was requested to enable a review of the 1974 magazine data on past car mpg performance and changes in vehicle efficiency. It address to core quesitons:
+This report was requested to enable a review of the 1974 magazine data on past car mpg performance and changes in vehicle efficiency. It addresses two core quesitons:
 
 1. Is an automatic or manual transmission better for MPG?
 1. Quantify the MPG difference between automatic and manual transmissions.  
@@ -61,7 +64,7 @@ Based upon our analysis we conclude that in 1974:
 1. _**Manual tranmisssions were better for MPG**_.
 1. Transmission, weight and quarter mile time significantly influenced mpg effienciency.
 1. Manual transmissions were on average _**7.24 miles per gallon**_ more efficient that automatics.
-1. For the same weight and quarter mile time, manual transmission cars were between **1.41** and **2.23** miles per gallon more efficient than an automatic transmission (Depending on whether we account for transmission and weight interaction in the linear model).
+1. The model developed is estimated to explain about **88%** of the variance of the MPG variable in the **mtcars** data set.  
 
 **Conclusion:** In 1974, cars that were lighter in weight with a manual transmission and cars that were heavier in weight with an automatic transmission had higher MPG values. See: Appendix A, Figure 2.
 
@@ -73,13 +76,7 @@ The Motor Trend magazine data was extracted in 1974, it coverered gasoline milea
 
 ## Basic exploratory data analyses 
 
-Our initial goal was to test the hypothesis that cars in 1974 with an automatic transmission used more fuel than cars with a manual transmission. Whether cars have an automatic or manual transmission is found in the `am` (**Auto/Manual**) column of the `mtcars` dataset.
- 
-###  Is an automatic or manual transmission better for MPG? **Answer:\(\color{red}"Manual"\)**
-
-The box plot (Appendix A, Figure 1.) provides a simple yet clear indication that automatic cars from the 1974 data set had lower mpg effienciency (**Automatic Transmission Median: 17.15 mpg**) than the manual cars reviewed (**Manual Transmission Median: 24.39 mpg**). Based on figure 1 we appear to have a clear hypothesis that automatic cars had a lower miles per gallon, and therefore a lower fuel efficiency, than manual cars did. i.e (24.39mpg - 17.15mpg creates a 7.24mpg manual transmission advantage. _The median is depicted as a thick line in figure 1, the edges of the box show the 25th and 75th quantiles of the data respectively_.   
-
-Did lower automatic transmission mpg efficiency occur in the data by random chance? To try to confirm, we performed a **t.test()** - `t.test(mpg ~ am, data=mtcars)`. Our goal being to determine if MPG results relied on having an automatic or manual transmission. In essence, we wanted to try to refute that random chance created the inference depicted in figure 1.
+Our initial goal was to test the hypothesis that cars in 1974 with an automatic transmission used more fuel than cars with a manual transmission. The box plot (**Appendix A, Figure 1.**) provides a simple yet clear indication that automatic cars from the 1974 data set had lower mpg effienciency (Automatic Transmission Median: 17.15 mpg) than the manual cars reviewed (Manual Transmission Median: 24.39 mpg). Based on figure 1, we appear to have a clear hypothesis that automatic cars had a lower miles per gallon, and therefore a lower fuel efficiency, than manual cars did. i.e (**24.39mpg - 17.15mpg creates a 7.24mpg manual transmission advantage**). 
 
 ```{r T_Test_MPG_MANUAL-Automatic, results='asis'}
 
@@ -102,19 +99,18 @@ pandoc.table(displayTable,
              split.tables = 100)
 
 ```
+Did lower automatic transmission mpg efficiency occur in the data by random chance? To try to confirm, we performed a `t.test(mpg ~ am, data=mtcars)`. The t-test **p-value** result of **`r t1$p.value`** in combination with a confidence value of **`r attr(t1$conf.int, "conf.level" )*100`%**, indicate that we can be confident that the probability of chance is low.  We conclude that automatic transmissions **did** have lower **MPG** in 1974 than manuals. 
 
-The t-test **p-value** result of **`r t1$p.value`** in combination with a confidence value of **`r attr(t1$conf.int, "conf.level" )*100`%**, indicate that we can be confident that the probability of chance is low.  We conclude that automatic transmissions **did** have lower **MPG** in 1974 than manuals, what we were unable to determine from this initial testing is what exactly was causing the correlation. We checked to see if automobile weight in 1974 _**correlated**_ with _**MPG**_ efficiency. **Appendix A, Figure 2** shows that in 1974 automobile weight did correlate with MPG for both manual and automatic cars. Here we used a linear model to depict the manual and automatic trend lines.
+\pagebreak
 
-### Answer: Quantify the MPG difference between automatic and manual transmissions. 
-
-**Appendix A, Figure 3** shows our final exploratory chart which indicates visually that weight is a key driving factor. However, the predictors (Weight, Cylinder Size, and Displacement) could potentially be confounded. To determine which predictors were significant, and to select the preferred model to use, we performed an Akaike information criterion (AIC) model selection _**(Ref: The R Book, Chapter 9.17)**_ against the baseline linear model, the smaller the AIC, the better the fit.
+We checked to see if automobile weight in 1974 _**correlated**_ with _**MPG**_ efficiency. **Appendix A, Figure 2** shows that in 1974 automobile weight did correlate with MPG for both manual and automatic cars. We used a linear model to depict the manual and automatic trend lines. 
 
 ```{r Regression_Analysis, echo=TRUE, results='hide'}
 baseline <- lm(mpg ~ ., data=mtcars)
 prefferedModel <- step(baseline, k=log(nrow(mtcars)))
 ```
 
-we reviewed the `prefferedModel` results and picked **weight**, **quarter mile** and **transmission** as the predictors of most value based on the lowest **AIC of 67.17**. Our final check was to see if the predictors interact. We checked this with `aov` and noted that `wt` and `am` do appear to interact **(Sum Sq 52.0)**, hence we specified to `lm()` that weight and transmission interact `wt:am`
+**Appendix A, Figure 3** shows our final exploratory chart which gives a strong indication that weight was a key driving factor in 1974. However, the predictors (Weight, Cylinder Size, and Displacement) could potentially be confounded. To determine which predictors were significant, and to select the preferred model to use, we performed an [Akaike information criterion (AIC) model][6] selection _**(Ref: The R Book, Chapter 9.17)**_ against the `baseline` linear model using the `step()` function; the smaller the AIC, the better the fit. The `prefferedModel`  model selected has the Residual standard error as **2.084** on **27** degrees of freedom and has an Adjusted R-squared value of **0.8804**, which means that the model can explain about **88%** of the variance of the MPG variable.  
 
 ```{r SelectModel, echo=TRUE, results='hide'}
 
@@ -125,25 +121,23 @@ summary(finalModel)$coef
 
 ```
 
-Thus, the result shows that when `wt` **(weight/1000lbs)** and `qsec` **(1/4 mile time)** are fixed we can calculate the manual transmission advantage over an equivalent automatic transmission. Without interaction we see a **1.41mpg** advantage, if we remove interaction of weight and transmission we see a **2.23mpg** advantage.
+Based on the result we picked **weight**, **quarter mile** and **transmission** as the predictors of most value based on the lowest **aic()** result of **AIC of 67.17**. Our final check was to see if the predictors interact using `aov`. We noted that `wt` and `am` do appear to interact **(Sum Sq 52.0)**, hence we specified to `lm()` that weight and transmission interact `wt:am`. 
+
+Thus, we conclude that when `wt` **(weight/1000lbs)** and `qsec` **(1/4 mile time)** are fixed, we can calculate the manual transmission advantage over an equivalent automatic transmission. For example, a hypetheical manual transmission car that weighs 2500 lbs has, with a qsec of 16.5 has a predicted mpg of **22.9mpg**. We can go futher an use the `finalmodel` to predict the mpg of all the vehicles in mtcars. 
 
 ```{r prediction, echo=TRUE, results='hide'}
 
+# We can now use predict() to predict the fuel economy of hypothetical cars...
 newcar = data.frame(wt=2.5, qsec=16.5, am=1)
 predict(finalModel, newcar)
 
-```
-
-That is, a manual transmission car that weighs 2500 lbs has, with a qsec of 16.5 has a predicted mpg of **22.9mpg**. We can also use the model to predict the mpg of all the vehicles in mtcars. 
-
-```{r prediction2, echo=TRUE, results='hide'}
-
+# Alternatively, we can use predict() to show the predicted fuel economoy of mtcars
 predict(finalModel)
 
 ```
 ## Residual Analysis / Diagnostics
 
-To wrap up, we ran a model fit, we can verify the following underlying assumptions:
+To wrap up, we ran a diagnostic model (Appendix A, Figure 4), (Ref: R CookBook, Section 11.15) enabling us to verify the following underlying assumptions:
 
 1. The Residuals vs. Fitted plot shows no consistent pattern, in support of accuracy of the independence.
 1. The Normal Q-Q plot indicates that the residuals are normally distributed to the line.
@@ -159,97 +153,287 @@ sum((abs(dfbetas(finalModel)))>1)
 
 # Appendix A
 
-```{r Exploratory_Plot, results='hide', fig.cap="Exploratory BoxPlot"}
+```{r Exploratory_Plots, fig.width=10, fig.height=13, results='hide'}
+
+################################################################################
+#
+# Exploratory Plots...
+#
+# In this section of the the report we create a set of plots, graphs etc to map 
+# out the data visually so we can get a sense of what is going on. The real 
+# intent here is to create a set of quick and dirty plots and then clean up for 
+# the production report.
+#
+# As space is short for the report (2 page Report, 3 page Plot Apendix) we are
+# going to use gridExtra to condense the graphics a bit.
+#
+################################################################################
 
 mtcars$am <- as.factor(mtcars$am)
 levels(mtcars$am) <- c("Automatic", "Manual")
 
+################################################################################
+#
+# Boxplot of mtcars
+#
+# First things first, we want to create a boxplot of mtcars to check out the 
+# assumption that Transmission has an impact on MPG. Empiracally, we know that 
+# this is true today, but in 1974?
+#
+# Answer: Yep, looking at the initial ploy and the cleaned up plot below we do
+# see a clear impact on mpg based on the transmission...
+#
+################################################################################
 
-gp <- ggplot(mtcars, aes(x=factor(am), y=mpg, color=am))
-gp <- gp + geom_boxplot()
+# We reverse the display order to align with figure 2...
+# 
+# i.e. Display Manual, then automatic boxplot...
+# 
+mtcars$am <- with(mtcars, relevel(mtcars$am, "Manual"))
 
-# Here we use a function to correctly position the Boxplot mean labels
+gp1 <- ggplot(mtcars, aes(x=factor(am), y=mpg, color=am))
+# By default wsj_theme sets axis.title=element_blank() to reenable
+# ylab / xlab we set axix.title... Now ylab / xlab work...
+# Ref: http://stackoverflow.com/questions/14379737/how-can-i-make-xlab-and-ylab-visible-when-using-theme-wsj-ggthemes
+gp1 <- gp1 + theme_wsj() + theme(axis.title=element_text(size=8))
+gp1 <- gp1 + geom_boxplot()
+
+# Here we use a function to correctly position the Boxplot mean labels on the
+# actual boxplots. Thanks go to stackoverflow for this one...
+# 
+# http://stackoverflow.com/questions/19876505/boxplot-show-the-value-of-mean
+# 
+# 
 mean.n <- function(x){
   return(c(y = median(x)*1.04, label = round(mean(x),2))) 
   # experiment with the multiplier to find the perfect position
 }
 
-gp <- gp + stat_summary(fun.data = mean.n, geom = "text", size=2, lineheight=.8, fun.y = mean, colour = "Black")
+gp1 <- gp1 + stat_summary(fun.data = mean.n, 
+                          geom = "text", 
+                          size=3, lineheight=.8, 
+                          fun.y = mean, 
+                          colour = "Black")
 
-gp <- gp + theme_wsj() 
-gp <- gp + xlab("Transmission (Auto / Manual)")
-gp <- gp + ylab("Miles per Gallon")
+gp1 <- gp1 + xlab("Transmission (Auto / Manual)")
+gp1 <- gp1 + ylab("Miles per Gallon")
+gp1 <- gp1 + theme(axis.title.y = element_text(angle=90))
+gp1 <- gp1 + ggtitle("Figure 1: Miles per Gallon by Transmission Type")
+gp1 <- gp1 + expand_limits(y=c(0,40))                        # Expand y range
+gp1 <- gp1 + scale_y_continuous(breaks=0:20*5)         # Set tick every 5
+gp1 <- gp1 + theme(legend.position=c(.5, .1), 
+                   plot.title = element_text(size=12, 
+                                             lineheight=.8, face="bold"))
+gp1 <- gp1 + theme(legend.title = element_text(size = 8, face = 'bold'))
+gp1 <- gp1 + theme(legend.text = element_text(size = 8, face = 'bold'))
+gp1 <- gp1 + theme(axis.text = element_text(size = 8, face = 'bold'))
+gp1 <- gp1 + theme(plot.margin=unit(c(.2,0,0,0), "cm"))
+
+################################################################################
+#
+#
+################################################################################
+
+gp2 <- ggplot(mtcars, aes(x=wt*1000, y=mpg, col=am))
+# By default wsj_theme sets axis.title=element_blank() to reenable
+# ylab / xlab we set axix.title... Now ylab / xlab work...
+# Ref: http://stackoverflow.com/questions/14379737/how-can-i-make-xlab-and-ylab-visible-when-using-theme-wsj-ggthemes
+gp2 <- gp2 + theme_wsj() + theme(axis.title=element_text(size=8))
+gp2 <- gp2 + geom_point()
+gp2 <- gp2 + geom_smooth(method="lm")
+gp2 <- gp2 + expand_limits(y=c(0,40))                        # Expand y range
+gp2 <- gp2 + scale_y_continuous(breaks=0:20*5)         # Set tick every 5
+gp2 <- gp2 + xlab("Automobile Weight per 1000lbs")
+gp2 <- gp2 + ylab("Miles per Gallon")
+gp2 <- gp2 + theme(axis.title.y = element_text(angle=90))
 # Legend label, use darker colors
-gp <- gp + ggtitle("Miles per Gallon by Transmission Type")
-gp <- gp + expand_limits(y=0)                        # Expand y range
-gp <- gp + scale_y_continuous(breaks=0:20*5)         # Set tick every 5
-gp <- gp + theme(legend.position=c(.5, .1), 
-                  plot.title = element_text(size=8, 
+gp2 <- gp2 + ggtitle("Figure 2: Miles per Gallon by Automobile Weight")
+gp2 <- gp2 + theme(legend.position=c(.5, .1), 
+                   plot.title = element_text(size=12, 
+                                             lineheight=.8, face="bold"))
+gp2 <- gp2 + theme(legend.title = element_text(size = 8, face = 'bold'))
+gp2 <- gp2 + theme(legend.text = element_text(size = 8, face = 'bold'))
+gp2 <- gp2 + theme(axis.text = element_text(size = 8, face = 'bold'))
+gp2 <- gp2 + theme(plot.margin=unit(c(.2,0,0,0), "cm"))
+
+################################################################################
+#
+# Plot wight, aginst mpg, clylinder size and displacement...
+#
+################################################################################
+
+gp3 <- ggplot(mtcars, aes(x=wt*1000, y=mpg, col=cyl, size=disp))
+# By default wsj_theme sets axis.title=element_blank() to reenable
+# ylab / xlab we set axix.title... Now ylab / xlab work...
+# Ref: http://stackoverflow.com/questions/14379737/how-can-i-make-xlab-and-ylab-visible-when-using-theme-wsj-ggthemes
+gp3 <- gp3 + theme_wsj() + theme(axis.title=element_text(size=8))
+
+# gp3 <- gp3 + theme_wsj() 
+gp3 <- gp3 + geom_point()
+gp3 <- gp3 + expand_limits(y=c(0,40)) # Expand y range
+gp3 <- gp3 + scale_y_continuous(breaks=0:20*5)         # Set tick every 5
+gp3 <- gp3 + xlab("Automobile Weight per 1000lbs")
+gp3 <- gp3 + ylab("Miles per Gallon")
+gp3 <- gp3 + theme(axis.title.y = element_text(angle=90))
+# Legend label, use darker colors
+gp3 <- gp3 + ggtitle("Figure 3: MPG by Automobile Weight, Cyclinder Size and Displacement")
+gp3 <- gp3 + theme(legend.position=c(.15, .2), 
+                  plot.title = element_text(size=12, 
                                             lineheight=.8, face="bold"))
-gp <- gp + theme(legend.title = element_text(size = 8, face = 'bold'))
-gp <- gp + theme(legend.text = element_text(size = 8, face = 'bold'))
-gp <- gp + theme(axis.text = element_text(size = 8, face = 'bold'))
-# gp <- gp + theme(Stat.Median = element_text(size = 8, face = 'bold'))
-print(gp)
+gp3 <- gp3 + theme(legend.title = element_text(size = 8, face = 'bold'))
+gp3 <- gp3 + theme(legend.text = element_text(size = 8, face = 'bold'))
+gp3 <- gp3 + theme(axis.text = element_text(size = 8, face = 'bold'))
+gp3 <- gp3 + theme(plot.margin=unit(c(.2,0,0,0), "cm"))
+
+# 
+plist <- list(gp1,gp2,gp3)
+do.call("grid.arrange", c(plist))
+
 ```
 
-
-
-```{r Exploratory_Linear_Plot, fig.cap="Exploratory Linear Plot"}
-
-gp <- ggplot(mtcars, aes(x=wt*1000, y=mpg, col=am))
-gp <- gp + geom_point()
-gp <- gp + geom_smooth(method="lm")
-gp <- gp + theme_wsj() 
-gp <- gp + expand_limits(y=0)                        # Expand y range
-gp <- gp + scale_y_continuous(breaks=0:20*5)         # Set tick every 5
-gp <- gp + xlab("Automobile Weight per 1000lbs")
-gp <- gp + ylab("Miles per Gallon")
-# Legend label, use darker colors
-gp <- gp + ggtitle("Miles per Gallon by Automobile Weight")
-gp <- gp + theme(legend.position=c(.5, .1), 
-                  plot.title = element_text(size=8, 
-                                            lineheight=.8, face="bold"))
-gp <- gp + theme(legend.title = element_text(size = 8, face = 'bold'))
-gp <- gp + theme(legend.text = element_text(size = 8, face = 'bold'))
-gp <- gp + theme(axis.text = element_text(size = 8, face = 'bold'))
-print(gp)
-```
 
 \pagebreak
 
-```{r Exploratory_Multiple_Linear_Regression_Plot, fig.height=4, fig.cap="Exploratory Multiple Linear Regression Plot", echo=FALSE, warning=FALSE, message=FALSE, results='show'}
 
-gp <- ggplot(mtcars, aes(x=wt*1000, y=mpg, col=cyl, size=disp))
-gp <- gp + geom_point()
-gp <- gp + theme_wsj() 
-gp <- gp + expand_limits(y=0)                        # Expand y range
-gp <- gp + xlab("Automobile Weight per 1000lbs")
-gp <- gp + ylab("Miles per Gallon")
-# Legend label, use darker colors
-gp <- gp + ggtitle("MPG by Automobile Weight, Cyclinder Size and Displacement")
-gp <- gp + theme(legend.position=c(.3, .2), 
-                  plot.title = element_text(size=8, 
-                                            lineheight=.8, face="bold"))
-gp <- gp + theme(legend.title = element_text(size = 8, face = 'bold'))
-gp <- gp + theme(legend.text = element_text(size = 8, face = 'bold'))
-gp <- gp + theme(axis.text = element_text(size = 8, face = 'bold'))
+```{r Exploratory_Fit_plot, fig.width=10, fig.height=7}
 
-print(gp)
+## Delete existing plot data...
+## 
+rm(gp1,gp2,gp3)
+
+## USe the data from the selected 'finalModel' using wt, qsec, and transmission (account for
+## weight / transmission linkage [wt:am])
+## 
+bestfit <- finalModel
+r <- residuals(bestfit)
+yh <- predict(bestfit)
+
+## Quick test 1 - Here we were just making sure things look Ok before formatting
+# par(mfrow=c(2,2)) 
+# plot(bestfit)
+
+## Quicktest 2 - slide extension of the above...
+# plot_numbers <- 1:6
+# layout(matrix(plot_numbers, ncol = 2, byrow = TRUE))
+# plot(bestfit, plot_numbers)
+
+################################################################################
+#
+# Create Scaterplot Function to reduce duplication of code...
+# to:do - update code base to use...
+#
+################################################################################
+
+scatterplot <- function(x,y,
+                        title="",
+                        xlab="",
+                        ylab="") 
+{
+  d <- data.frame(x = x,y = y)
+  p <- ggplot(d, aes(x = x,y = y))
+  # By default wsj_theme sets axis.title=element_blank() to reenable
+  # ylab / xlab we set axix.title... Now ylab / xlab work...
+  # Ref: http://stackoverflow.com/questions/14379737/how-can-i-make-xlab-and-ylab-visible-when-using-theme-wsj-ggthemes
+  p <- p + theme_wsj() + theme(axis.title=element_text(size=8))
+  p <- p + theme(axis.title.y = element_text(angle=90))
+  p <- p + theme(plot.title = element_text(size=12, lineheight=.9, face="bold"))
+  p <- p + geom_point() 
+  p <- p + ggtitle(title) 
+  p <- p + xlab(xlab) 
+  p <- p + ylab(ylab)
+  return(p)
+}
+
+################################################################################
+#
+# Create qqplot Function to reduce duplication of code...
+# to:do - update code base to use...
+#
+################################################################################
+qqplot <- function(y,
+                   distribution=qnorm,
+                   title="",
+                   xlab="",
+                   ylab="") 
+{
+  x <- distribution(ppoints(y))
+  d <- data.frame(x = x, y = sort(y))
+  p <- ggplot(d, aes(x = x, y = y))
+  # By default wsj_theme sets axis.title=element_blank() to reenable
+  # ylab / xlab we set axix.title... Now ylab / xlab work...
+  # Ref: http://stackoverflow.com/questions/14379737/how-can-i-make-xlab-and-ylab-visible-when-using-theme-wsj-ggthemes
+  p <- p + theme_wsj() + theme(axis.title=element_text(size=8))
+  p <- p + theme(axis.title.y = element_text(angle=90))
+  p <- p + theme(plot.title = element_text(size=12, lineheight=.8, face="bold"))
+  p <- p + geom_point()
+  p <- p + geom_line(aes(x = x, y = x))
+  p <- p + ggtitle(title)
+  p <- p + xlab(xlab)
+  p <- p + ylab(ylab)
+  return(p)
+}
+
+################################################################################
+#
+# Create diagnostics plots based off bestfit data...
+#
+################################################################################
+
+## Residuals vs Fitted Plot...
+## 
+gp1 <- scatterplot(yh, r,
+                  title = "Residuals vs Fitted",
+                  xlab = "Fitted values",
+                  ylab = "Residuals")
+gp1 <- gp1 + geom_hline(yintercept = 0) 
+gp1 <- gp1 + geom_smooth(method = "loess")
+
+## Normal Q-Q Plot...
+## 
+s <- sqrt(deviance(bestfit) / df.residual(bestfit))
+rs <- r / s
+gp2 <- qqplot(rs,  
+             distribution=qnorm, 
+             title="Normal Q-Q", 
+             xlab="Theretical Quantiles", 
+             ylab="Sample Quantiles")
+
+## Scale-Location Plot...
+## 
+sqrt.rs <- sqrt(abs(rs))
+gp3 <- scatterplot(yh,sqrt.rs,
+                  title = "Scale-Location",
+                  xlab = "Fitted values",
+                  ylab = expression(sqrt("Standardized residuals")))
+gp3 <- gp3 + geom_smooth()
+
+## Residuals verses Leverage
+##
+hii <- lm.influence(bestfit, do.coef = FALSE)$hat
+gp4 <- scatterplot(hii,rs,
+                  title = "Residuals vs Leverage",
+                  xlab = "Leverage",
+                  ylab = expression(sqrt("Standardized residuals")))
+gp4 <- gp4 + geom_hline(yintercept = 0)
+gp4 <- gp4 + geom_smooth()
+gp4 <- gp4 + geom_text(aes(
+  x = min(hii) + diff(range(hii)) * 0.3,
+  y = min(rs) + diff(range(rs)) * 0.04,
+  label = "--   Cook's distance", size = 3
+))
+gp4 <- gp4 + theme(legend.position = "none")
+
+## Display plots...
+## 
+
+grid.arrange(gp1,gp2,gp3,gp4, 
+             ncol=2, 
+             main=textGrob("Figure 4: Residual Analysis / Diagnostics",
+                           gp=gpar(cex=3,fontsize=4,face="bold"), 
+                           vjust=2, 
+                           check.overlap=TRUE))
 
 ```
-
-
-\pagebreak
-
-
-```{r Exploratory_Fit_plot, fig.width=6, fig.height=6, fig.cap="Exploratory Model Fit Plots"}
-
-bestfit <- lm(mpg ~ wt + qsec + am + wt:am, data=mtcars)
-par(mfrow = c(2,2))
-plot(bestfit)
-
-```   
 
 # **References**
 
@@ -264,6 +448,10 @@ plot(bestfit)
 - *Mathematical Statistics with Resampling and R*     
     
     - By: Laura Chihara; Tim Hesterberg Publisher: John Wiley & Sons Pub. Date: September 6, 2011 Print ISBN: 978-1-11-02985-5
+    
+- *OpenIntro Statistics - 2nd Editions*
+
+    - By: by David M Diez (Author), Christopher D Barr (Author), Mine Çetinkaya-Rundel (Author) 
 
 - *Think Stats, 2nd Edition* 
     
@@ -275,4 +463,5 @@ plot(bestfit)
 [3]: http://www.jstor.org/discover/10.2307/2530428?uid=3739960&uid=2129&uid=2&uid=70&uid=4&uid=3739256&sid=21106429238751
 [4]: http://www.washingtonpost.com/blogs/wonkblog/wp/2013/12/13/cars-in-the-u-s-are-more-fuel-efficient-than-ever-heres-how-it-happened/
 [5]: https://www.fueleconomy.gov/feg/atv.shtml
+[6]: http://en.wikipedia.org/wiki/Akaike_information_criterion
 
