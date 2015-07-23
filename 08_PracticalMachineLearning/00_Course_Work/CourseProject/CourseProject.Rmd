@@ -1,0 +1,103 @@
+---
+title: "08 Machine Learning - Course Project"
+author: "Technophobe01"
+date: '`r Sys.Date()`'
+output:
+  html_document: default
+  pdf_document:
+    fig_caption: no
+    number_sections: yes
+header-includes: \usepackage[compact]{titlesec} \titlespacing{\section}{0pt}{0pt}{0pt}
+---
+
+```{r setOptions, echo=FALSE, message=FALSE, results='hide'}
+require(knitr)
+opts_chunk$set(fig.width=8, fig.height=5, 
+               fig.path='Figs/',
+# Dev Setup / Production setup
+#               cache=FALSE, echo=TRUE, warning=TRUE, message=TRUE, results='show')
+               cache=FALSE, echo=FALSE, warning=FALSE, message=FALSE, results='show')
+require(knitcitations)
+cleanbib()
+```
+
+```{r Setup, results='hide'}
+setwd("~/Documents/Dropbox/dev/cousera/courses/08_PracticalMachineLearning/00_Course_Work/CourseProject")
+
+# Load the required R packages...
+#
+requiredPackages <- c("ggplot2",        # Used to plot graphics 
+                      "gtable",
+                      "ggthemes",       # Extra themes, scales and geoms for ggplot (Very cool!)
+                      "xtable",
+                      "caret",          # Classification and Regression Training Library
+                      "randomForest")   # Breiman and Cutler's random forests for classification and regression
+
+ipak <- function(pkg){
+        new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+        if (length(new.pkg))
+                install.packages(new.pkg, dependencies = TRUE)
+        sapply(pkg, require, character.only = TRUE)
+}
+
+ipak(requiredPackages)
+```
+
+# Executive Summary  
+
+## Data Set Description
+
+## Data Processing
+
+# Analysis Goals
+
+## Analysis Results
+
+# Conclusions
+
+\pagebreak
+
+# Appendix A
+
+
+\pagebreak
+
+
+# **References**
+
+- *Applied Predictive Modeling*   
+
+    - By: Max Kuln, Kjell Johnson, Publisher: Springer; Pub Date: May 17, 2013, eISBN: 978-1-461-46848-6
+
+- *The R Book*   
+
+    - By: Michael J. Crawley, Publisher: John Wiley & Sons Pub. Date: December 26, 2012, eISBN: 978-1-118-44896-0   
+    
+- *An Introduction to Statistical Learning*
+
+    - By: Gareth James (Author), Daniela Witten (Author), Trevor Hastie (Author), Robert Tibshirani (Author)
+
+- *The Elements of Statistical Learning*
+
+    - By: Trevor Hastie (Author), Robert Tibshirani (Author), Jerome Friedman (Author)
+
+- *R in Action*    
+
+    - By: Robert Kabacoff Publisher: Manning Publications Pub. Date: August 24, 2011, ISBN-10: 1-935182-39-0   
+
+- *Mathematical Statistics with Resampling and R*
+
+    - By: Laura Chihara; Tim Hesterberg Publisher: John Wiley & Sons Pub. Date: September 6, 2011 Print ISBN: 978-1-11-02985-5   
+
+- *OpenIntro Statistics - 2nd Editions*
+
+    - By: by David M Diez (Author), Christopher D Barr (Author), Mine Çetinkaya-Rundel (Author) 
+
+- *Think Stats, 2nd Edition*
+
+    - By: Allen B. Downey Publisher: O'Reilly Media, Inc. Pub. Date: October 28, 2014 Print ISBN-13: 978-1-4919-0733-7
+
+[0]: https://class.coursera.org/predmachlearn-030
+[1]: http://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html
+[2]: https://github.com/Technophobe01/courses/tree/master/08_RegressionModels/00_Course_Work/CourseProject
+
