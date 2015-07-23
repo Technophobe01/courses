@@ -12,11 +12,11 @@ header-includes: \usepackage[compact]{titlesec} \titlespacing{\section}{0pt}{0pt
 
 ```{r setOptions, echo=FALSE, message=FALSE, results='hide'}
 require(knitr)
-opts_chunk$set(fig.width=8, fig.height=5, 
-               fig.path='Figs/',
+opts_chunk$set(fig.width = 8, fig.height=5, 
+               fig.path = 'Figs/',
 # Dev Setup / Production setup
-#               cache=FALSE, echo=TRUE, warning=TRUE, message=TRUE, results='show')
-               cache=FALSE, echo=FALSE, warning=FALSE, message=FALSE, results='show')
+               cache = FALSE, echo = TRUE, warning = TRUE, message = TRUE, results = 'show')
+#               cache = FALSE, echo = FALSE, warning = FALSE, message = FALSE, results = 'show')
 require(knitcitations)
 cleanbib()
 ```
@@ -45,6 +45,8 @@ ipak(requiredPackages)
 
 # Executive Summary  
 
+The purpose of this document is to develop and answer the [Coursera Peer Assessment for the Practical Machine Learning Course][0].
+
 Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the _**quantified self movement**_ – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. 
 
 One thing that people regularly do is quantify how much of a particular activity they do, _but_ **they rarely quantify how well they do it**. 
@@ -65,7 +67,7 @@ seperaralty we use the prediction data to generate
 
 ## Data Set Description
 
-Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. We made sure that all participants could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
+Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. All participants were vetted to ensure they could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
 
 The participants were asked to perform barbell lifts *correctly* and *incorrectly* in 5 different ways. Six young healthy participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: 
 
@@ -75,31 +77,30 @@ The participants were asked to perform barbell lifts *correctly* and *incorrectl
 1. (Class D) - lowering the dumbbell only halfway 
 1. (Class E) - throwing the hips to the front 
 
-
 Read more: http://groupware.les.inf.puc-rio.br/har#dataset#ixzz3gge1uKYv
 
-## Data Processing
+## Data Import
 
-``` {r loadData}
+``` {r loadData, echo=FALSE}
 
-###############################################################################
-#
-#  1. Load, the training and test sets 
-#
-# The first step is to download the training and test data into the data
-# subdirectory, that we create if it does not exist. This program assumes that
-# all the data will be dowloaded into the 'data' directory below the working
-# directory.
-#
+# #############################################################################
+# 
+# 1. Load, the training and test data
+# 
+# The first step is to download the training and test data into the data 
+# subdirectory,  we create the director if it does not exist. This program
+# assumes that all the data will be dowloaded into the 'data' directory below
+# the working directory.
+# 
 
 trainDataURL = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 testDataURL = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 
 dataDir         <- "./data"
 trainData       <- "pml-training.csv"
-testData        <- "pml-test.csv"
+testData        <- "pml-testing.csv"
 
-trainfilePath   <- file.path(dataDir, trainData)
+trainDataPath   <- file.path(dataDir, trainData)
 testDataPath    <- file.path(dataDir, testData)
 
 # If the data dire does not exist we create it, so it can be used to store the
@@ -111,15 +112,51 @@ if (!file.exists(dataDir)) {
 
 # Now we can download files into the data subdirectory. 
 
-if (!file.exists(trainfilePath)) {
-        download.file(trainDataURL, temp, mode="wb", method = "curl")
-        unlink(temp)
+if (!file.exists(trainDataPath)) {
+        download.file(trainDataURL, trainDataPath, mode="wb", method = "curl")
 }
 
-if (!file.exists(testfilePath)) {
-        download.file(testDataURL, temp, mode="wb", method = "curl")
-        unlink(temp)
-}
+if (!file.exists(testDataPath)) {
+        download.file(testDataURL, testDataPath, mode="wb", method = "curl")
+}        
+
+# Load the baseData in preperation for review, cleanup and subsequent manipulation...
+
+trainBaseData <- read.csv(trainDataPath)
+testBaseData <- read.csv(testDataPath)
+
+# Get a quick sense of the data by listing the structure of the data and summarising the data...
+
+# str(trainBaseData)
+# summary(trainBaseData)
+# 
+# str(testBaseData)
+# summary(testBaseData)
+# 
+# Note lots of NA's, hmmm time to re-read 'Qualitative Activity Recognition of Weight Lifting Exercises' paper...
+# 
+```
+
+The our first step is to download and load the data from `pml-training.csv` and `pml-testing.csv` into R. We note that `trainBaseData` has `r dim(trainBaseData)` objects and variables, whilst `testBaseData` has `r dim(testBaseData)` objects and variables.
+
+The data was collected from four 9 degrees of freedom Razor inertial measurement units (IMU), which provide three-axes acceleration, gyroscope and magnetometer data at a joint sampling rate of 45 Hz. Each IMU also featured a Bluetooth module to stream the recorded data to a notebook running the Context Recognition Network Toolbox. The the sensors were mounted in the users’ glove, armband, lumbar belt and dumbbell. The tracking system was designed to be as unobtrusive as possible, as these are all equipmentm commonly used by weight lifters.
+
+``` {r stripData, echo=FALSE}
+
+# First step - strip out the columns that have NA data
+# 
+
+testBaseData <- testBaseData[, colSums(is.na(testBaseData)) != nrow(testBaseData)]
+dim(testBaseData)
+
+trainBaseData <- trainBaseData[, colSums(is.na(trainBaseData)) != nrow(trainBaseData)]
+dim(trainBaseData)
+
+# Woops - the above will not work as their is messy data in the trainBaseData...
+
+```
+
+``` {r showCleanData, echo=TRUE}
 
 ```
 
