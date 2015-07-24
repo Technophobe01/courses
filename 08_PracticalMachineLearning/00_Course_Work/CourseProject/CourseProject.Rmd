@@ -21,7 +21,7 @@ require(knitcitations)
 cleanbib()
 ```
 
-```{r Setup, results='hide'}
+```{r Setup, echo=FALSE, message=FALSE, results='hide'}
 setwd("~/Documents/Dropbox/dev/cousera/courses/08_PracticalMachineLearning/00_Course_Work/CourseProject")
 
 # Load the required R packages...
@@ -45,13 +45,9 @@ ipak(requiredPackages)
 
 # Executive Summary  
 
-The purpose of this document is to develop and answer the [Coursera Peer Assessment for the Practical Machine Learning Course][0].
+The purpose of this document is to develop and answer the [Coursera Peer Assessment for the Practical Machine Learning Course][0]. This reports source code is available via **[GitHub][1]**, if you wish to reveiw the markdown formatting in more detail.
 
-Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the _**quantified self movement**_ – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. 
-
-One thing that people regularly do is quantify how much of a particular activity they do, _but_ **they rarely quantify how well they do it**. 
-
-## Report Goal
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the _**quantified self movement**_ – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, _but_ **they rarely quantify how well they do it**. 
 
 The goal of this project is to use the referenced data caputured from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to *predict* how the participants performed the exercises. This report describes: 
 
@@ -112,18 +108,22 @@ if (!file.exists(dataDir)) {
 
 # Now we can download files into the data subdirectory. 
 
-if (!file.exists(trainDataPath)) {
-        download.file(trainDataURL, trainDataPath, mode="wb", method = "curl")
-}
-
 if (!file.exists(testDataPath)) {
         download.file(testDataURL, testDataPath, mode="wb", method = "curl")
 }        
 
-# Load the baseData in preperation for review, cleanup and subsequent manipulation...
+if (!file.exists(trainDataPath)) {
+        download.file(trainDataURL, trainDataPath, mode="wb", method = "curl")
+}
 
-trainBaseData <- read.csv(trainDataPath)
-testBaseData <- read.csv(testDataPath)
+# Load the baseData in preperation for review, cleanup and subsequent
+# manipulation...
+# 
+# Hindsight. The trainData contains a lot of messy NA, "" data we update the
+# read.cvs import to strip and replace the various NA data...
+
+testBaseData <- read.csv(testDataPath, na.strings=c("NA","NaN","#DIV/0!", ""))
+trainBaseData <- read.csv(trainDataPath, na.strings=c("NA","NaN","#DIV/0!", ""))
 
 # Get a quick sense of the data by listing the structure of the data and summarising the data...
 
@@ -137,24 +137,30 @@ testBaseData <- read.csv(testDataPath)
 # 
 ```
 
-The our first step is to download and load the data from `pml-training.csv` and `pml-testing.csv` into R. We note that `trainBaseData` has `r dim(trainBaseData)` objects and variables, whilst `testBaseData` has `r dim(testBaseData)` objects and variables.
+The our first step is to download and load the base data from `pml-training.csv` and `pml-testing.csv` into R. We note that `trainBaseData` has `r dim(trainBaseData)` objects and variables, whilst `testBaseData` has `r dim(testBaseData)` objects and variables.
+
+``` {r stripData, echo=TRUE}
+# Our goal here is to strip out the non applicable data. Our first step was to 
+# update the csv files loaded to strip out miscellaneous values such as spaces 
+# Now we strip all columns from the test data that have NA in them.
+testBaseData <- testBaseData[colSums(is.na(testBaseData)) == 0]
+# Note: The problem_id field in the testBaseData does not exist in the
+# trainBaseData so we remove it prior to subsetting the trainBaseData...  
+testBaseData <- subset(testBaseData,select=-(problem_id))
+# hindsight: Problem_id is used by the submission fucntion to Coursera 
+# we will fix this later... For now it makes for clean thinking...
+
+# Now we strip out the non data columns...
+testBaseData <- subset(testBaseData,select=-(1:7))
+# Now we subset the trainBasedata to match the same set of columns as the
+# testBaseData and do a quick check to compare the column names match...
+trainBaseData <- subset(trainBaseData,select=c(colnames(testBaseData)))
+# t <- compare(colnames(testBaseData),colnames(trainBaseData))
+```
 
 The data was collected from four 9 degrees of freedom Razor inertial measurement units (IMU), which provide three-axes acceleration, gyroscope and magnetometer data at a joint sampling rate of 45 Hz. Each IMU also featured a Bluetooth module to stream the recorded data to a notebook running the Context Recognition Network Toolbox. The the sensors were mounted in the users’ glove, armband, lumbar belt and dumbbell. The tracking system was designed to be as unobtrusive as possible, as these are all equipmentm commonly used by weight lifters.
 
-``` {r stripData, echo=FALSE}
-
-# First step - strip out the columns that have NA data
-# 
-
-testBaseData <- testBaseData[, colSums(is.na(testBaseData)) != nrow(testBaseData)]
-dim(testBaseData)
-
-trainBaseData <- trainBaseData[, colSums(is.na(trainBaseData)) != nrow(trainBaseData)]
-dim(trainBaseData)
-
-# Woops - the above will not work as their is messy data in the trainBaseData...
-
-```
+After cleaning the data source we `testBaseData` and `pml-testing.csv` into R. We note that `trainBaseData` has `r dim(trainBaseData)` objects and variables, whilst `testBaseData` has `r dim(testBaseData)` objects and variables.
 
 ``` {r showCleanData, echo=TRUE}
 
@@ -214,6 +220,6 @@ dim(trainBaseData)
     - By: Allen B. Downey Publisher: O'Reilly Media, Inc. Pub. Date: October 28, 2014 Print ISBN-13: 978-1-4919-0733-7
 
 [0]: https://class.coursera.org/predmachlearn-030
-[1]: http://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html
+[1]: https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/
 [2]: https://github.com/Technophobe01/courses/tree/master/08_RegressionModels/00_Course_Work/CourseProject
 
