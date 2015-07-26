@@ -70,7 +70,7 @@ img {
 
 <div id="executive-summary" class="section level1">
 <h1><span class="header-section-number">1</span> Executive Summary</h1>
-<p>The purpose of this document is to develop and answer the <a href="https://class.coursera.org/predmachlearn-030">Coursera Peer Assessment for the Practical Machine Learning Course</a>. This reports source code is available via <strong><a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/">GitHub</a></strong>, if you wish to reveiw the <strong><em>code</em></strong> and <strong><em>markdown formatting</em></strong> in more detail.</p>
+<p>The purpose of this document is to develop and answer the <a href="https://class.coursera.org/predmachlearn-030">Coursera Peer Assessment for the Practical Machine Learning Course</a>. This reports source code is available via <strong><a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/">GitHub</a></strong>, if you wish to review the <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.Rmd"><strong><em>code</em></strong></a>, <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.Rmd"><strong><em>markdown formatting</em></strong></a> or <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.html"><strong><em>html</em></strong></a>, or <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.pdf"><strong><em>pdf</em></strong></a> output in more detail.</p>
 <p>Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the <em><strong>quantified self movement</strong></em> – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, <em>but</em> <strong>they rarely quantify how well they do it</strong>.</p>
 <p>The goal of this project is to use the referenced data captured from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to <em>predict</em> how the participants performed the exercises. This report describes:</p>
 <ol style="list-style-type: decimal">
@@ -146,9 +146,10 @@ trainCleanData &lt;- trainCleanData[, -highCorr]</code></pre>
 <div id="analysis-choice-of-algorythm" class="section level1">
 <h1><span class="header-section-number">3</span> Analysis / Choice of Algorythm</h1>
 <p>Our final choice of algorthm was the <strong>Random Forest</strong>, as this indicated the highest <strong>accuracy</strong> against <strong>system time</strong>. The choice of algorythm was based of our analysis below. In essence, our goal was to validate the <strong>time</strong>, verses <strong>accuracy</strong> trade off of a set of machine alogorthms.</p>
-<div id="data-split" class="section level2">
-<h2><span class="header-section-number">3.1</span> Data Split</h2>
-<p>To setup the validaton work, we first split the data 60 / 40</p>
+<div id="data-split-cross-validation" class="section level2">
+<h2><span class="header-section-number">3.1</span> Data Split / Cross Validation</h2>
+<p>To setup the validaton work, now we have chosen our model we first split the data 60 / 40.</p>
+<p>Our goal of cross validation is to define a dataset to “test” the model in the training phase (i.e., the validation dataset), in order to limit problems like overfitting, give an insight on how the model will generalize to an independent dataset etc. One round of cross-validation involves partitioning a sample of data into complementary subsets, performing the analysis on one subset (called the training set), and validating the analysis on the other subset (called the validation set or testing set). To reduce variability, multiple rounds of cross-validation can be performed using different partitions, and the validation results can be averaged over the rounds. Cross-validation is important in guarding against testing hypotheses suggested by the data (called “Type III errors”), especially where further samples are hazardous, costly or impossible to collect.</p>
 <pre class="r"><code>set.seed(12345)
 inTrain &lt;- createDataPartition( trainCleanData$classe, p = 0.70, list = F )
 trainSplitData &lt;- trainCleanData[inTrain,]  # 60%
@@ -237,12 +238,12 @@ finalModelRF &lt;- train( classe ~ .,
 finalModelRFAccuracy &lt;- predict(finalModelRF , testSplitData)
 finalModelRFConfusionM &lt;- confusionMatrix(finalModelRFAccuracy, testSplitData$classe)
 finalModelRFOutofSampleError &lt;- (1 - as.numeric(finalModelRFConfusionM$overall[1]))</code></pre>
-<div id="accuracy-and-out-of-sample-erro-rate" class="section level2">
-<h2><span class="header-section-number">4.1</span> Accuracy and Out of Sample Erro Rate</h2>
-<p>now we have the <code>finalModelRF</code>, we can check its accuracy. The model acheives a <strong>99.99%</strong> accuracy level with less than <strong>0.01%</strong> <em>out of sample error</em> rate.</p>
+<div id="accuracy-and-out-of-sample-error-rate" class="section level2">
+<h2><span class="header-section-number">4.1</span> Accuracy and Out of Sample Error Rate</h2>
+<p>Now we have the <code>finalModelRF</code>, we can check its accuracy. The model acheives a <strong>99.99%</strong> accuracy level with less than <strong>0.01%</strong> <em>out of sample error</em> rate.</p>
 <div id="important-variables" class="section level3">
 <h3><span class="header-section-number">4.1.1</span> Important Variables</h3>
-<p>this point we can move to evaluate which variables have the biggest impact ont the model. The <code>caret</code> package has a unifying function called <strong><code>varImp</code></strong> that is a wrapper for variable importance functions for the following tree-model objects: <strong><em>rpart, classbagg (produced by the ipred package’s bagging functions) randomForest, cforest, gbm, and cubist.</em></strong></p>
+<p>At this point we can move to evaluate which variables have the biggest impact on the model. The <code>caret</code> package has a unifying function called <strong><code>varImp</code></strong> that is a wrapper for variable importance functions for the following tree-model objects: <strong><em>rpart, classbagg (produced by the ipred package’s bagging functions) randomForest, cforest, gbm, and cubist.</em></strong></p>
 <p>The top five variables are calculated using the <code>varImp</code> function and displayed below:</p>
 <pre><code>##    Overall               var
 ## 1 780.0027          yaw_belt
@@ -299,7 +300,6 @@ pml_write_files(answers)</code></pre>
 </div>
 <div id="appendix-a" class="section level1">
 <h1><span class="header-section-number">7</span> Appendix A</h1>
-<p></p>
 <div id="references" class="section level2">
 <h2><span class="header-section-number">7.1</span> <strong>References</strong></h2>
 <ul>

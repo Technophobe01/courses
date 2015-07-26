@@ -58,7 +58,7 @@ ipak(requiredPackages)
 
 # Executive Summary  
 
-The purpose of this document is to develop and answer the [Coursera Peer Assessment for the Practical Machine Learning Course][0]. This reports source code is available via **[GitHub][1]**, if you wish to reveiw the **_code_** and **_markdown formatting_** in more detail.
+The purpose of this document is to develop and answer the [Coursera Peer Assessment for the Practical Machine Learning Course][0]. This reports source code is available via **[GitHub][1]**, if you wish to review the [**_code_**][3], [**_markdown formatting_**][3] or [**_html_**][4], or [**_pdf_**][5] output in more detail.
 
 Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the _**quantified self movement**_ – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, _but_ **they rarely quantify how well they do it**. 
 
@@ -300,9 +300,12 @@ title("Figure 2 - New Correlation matrix", line = -1.5)
 
 Our final choice of algorthm was the **Random Forest**, as this indicated the highest **accuracy** against **system time**. The choice of algorythm was based of our analysis below. In essence, our goal was to validate the **time**, verses **accuracy** trade off of a set of machine alogorthms. 
 
-## Data Split
+## Data Split / Cross Validation
 
-To setup the validaton work, we first split the data 60 / 40
+To setup the validaton work, now we have chosen our model we first split the data 60 / 40. 
+
+Our goal of cross validation is to define a dataset to "test" the model in the training phase (i.e., the validation dataset), in order to limit problems like overfitting, give an insight on how the model will generalize to an independent dataset etc. One round of cross-validation involves partitioning a sample of data into complementary subsets, performing the analysis on one subset (called the training set), and validating the analysis on the other subset (called the validation set or testing set). To reduce variability, multiple rounds of cross-validation can be performed using different partitions, and the validation results can be averaged over the rounds. Cross-validation is important in guarding against testing hypotheses suggested by the data (called "Type III errors"), especially where further samples are hazardous, costly or impossible to collect.
+
 ``` {r analyse}
 set.seed(12345)
 inTrain <- createDataPartition( trainCleanData$classe, p = 0.70, list = F )
@@ -373,7 +376,7 @@ sample’s unique noise. This type of model is said to be over-fit and will usua
 
 To address this concern, we tuned the final model and performd 10 k-fold repeat operations. Essentially, the data sample is randomly partitioned into k sets of roughly equal size. A model is fit using the all samples except the first subset (called the first fold). The held-out samples are predicted by this model and used to estimate performance measures. The first subset is returned to the training set and procedure repeats with the second subset held out, and so on. The k resampled estimates of performance are summarized (usually with the mean and standard error) and used to understand the relationship between the tuning parameter(s) and model utility.  
 
-```{r FinalTuning}
+```{r FinalTuning, warning = FALSE, message = FALSE}
 registerDoParallel(makeCluster(detectCores()))
 
 modelControl <- trainControl(method = "cv",
@@ -394,13 +397,13 @@ finalModelRFOutofSampleError <- (1 - as.numeric(finalModelRFConfusionM$overall[1
 
 ```
 
-## Accuracy and Out of Sample Erro Rate
+## Accuracy and Out of Sample Error Rate
 
-now we have the `finalModelRF`, we can check its accuracy. The model acheives a **`r round((100-finalModelRFOutofSampleError),2)`%** accuracy level with less than **`r round(finalModelRFOutofSampleError,2)`%** _out of sample error_ rate.
+Now we have the `finalModelRF`, we can check its accuracy. The model acheives a **`r round((100-finalModelRFOutofSampleError),2)`%** accuracy level with less than **`r round(finalModelRFOutofSampleError,2)`%** _out of sample error_ rate.
 
 ### Important Variables
 
- this point we can move to evaluate which variables have the biggest impact ont the model. The `caret` package has a unifying function called **`varImp`** that is a wrapper for variable importance functions for the following tree-model objects: **_rpart, classbagg (produced by the ipred package’s bagging functions) randomForest, cforest, gbm, and cubist._**
+At this point we can move to evaluate which variables have the biggest impact on the model. The `caret` package has a unifying function called **`varImp`** that is a wrapper for variable importance functions for the following tree-model objects: **_rpart, classbagg (produced by the ipred package’s bagging functions) randomForest, cforest, gbm, and cubist._**
 
 The top five variables are calculated using the `varImp` function and displayed below:
  
@@ -460,8 +463,6 @@ Random Forests in summary are easy to learn and use for both professionals and l
 
 # Appendix A
 
-\pagebreak
-
 ## **References**
 
 - *Data Classification of Body Postures and Movements.* 
@@ -508,6 +509,9 @@ Random Forests in summary are easy to learn and use for both professionals and l
 [0]: https://class.coursera.org/predmachlearn-030
 [1]: https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/
 [2]: https://github.com/Technophobe01/courses/tree/master/08_RegressionModels/00_Course_Work/CourseProject
+[3]: https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.Rmd
+[4]: https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.html
+[5]: https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.pdf
 
 ## Environment
 
