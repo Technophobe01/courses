@@ -3,14 +3,14 @@ title: "08 Machine Learning - Course Project"
 author: "Technophobe01"
 date: '`r Sys.Date()`'
 output:
+  pdf_document:
+    fig_caption: yes
+    number_sections: yes
   html_document:
     fig_caption: yes
     highlight: textmate
     number_sections: yes
     theme: cerulean
-  pdf_document:
-    fig_caption: yes
-    number_sections: yes
 header-includes: \usepackage[compact]{titlesec}
 ---
 
@@ -322,7 +322,7 @@ Our approach was to run four baseline models and compare system time to accuracy
 - Linear Discriminant Analysis
 - Recursive Partitioning 
 
-``` {r modelAnalysis, echo=TRUE, results='hide'}
+``` {r modelAnalysis, echo=TRUE, warning = FALSE, message = FALSE, results='hide'}
 
 #random seed
 set.seed(12345)
