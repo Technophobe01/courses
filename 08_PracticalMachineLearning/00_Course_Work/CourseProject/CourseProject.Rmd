@@ -3,19 +3,23 @@ title: "08 Machine Learning - Course Project"
 author: "Technophobe01"
 date: '`r Sys.Date()`'
 output:
-  html_document: default
-  pdf_document:
-    fig_caption: no
+  html_document:
+    fig_caption: yes
+    highlight: textmate
     number_sections: yes
-header-includes: \usepackage[compact]{titlesec} \titlespacing{\section}{0pt}{0pt}{0pt}
+    theme: cerulean
+  pdf_document:
+    fig_caption: yes
+    number_sections: yes
+header-includes: \usepackage[compact]{titlesec}
 ---
 
 ```{r setOptions, echo=FALSE, message=FALSE, results='hide'}
 require(knitr)
-opts_chunk$set(fig.width = 8, fig.height=5, 
+opts_chunk$set(fig.width = 8, fig.height = 5, 
                fig.path = 'Figs/',
 # Dev Setup / Production setup
-               cache = FALSE, echo = TRUE, warning = TRUE, message = TRUE, results = 'show')
+               cache = TRUE, echo = TRUE, warning = TRUE, message = TRUE, results = 'show')
 #               cache = FALSE, echo = FALSE, warning = FALSE, message = FALSE, results = 'show')
 require(knitcitations)
 cleanbib()
@@ -26,17 +30,26 @@ setwd("~/Documents/Dropbox/dev/cousera/courses/08_PracticalMachineLearning/00_Co
 
 # Load the required R packages...
 #
-requiredPackages <- c("ggplot2",        # Used to plot graphics 
-                      "gtable",
+requiredPackages <- c("plyr",           # Load plyr before dplyr...
+                      "dplyr",
+                      "ggplot2",        # Used to plot graphics
+                      "reshape2",       
+                      "GGally",         # Used to enable ggcorr [ggplot2 Correlation plots]
+                      "gridExtra",      # Put multiple plots on a display with ggplot2
                       "ggthemes",       # Extra themes, scales and geoms for ggplot (Very cool!)
+                      "gtable",
                       "xtable",
                       "caret",          # Classification and Regression Training Library
-                      "randomForest")   # Breiman and Cutler's random forests for classification and regression
+                      "randomForest",   # Breiman and Cutler's random forests for classification and regression
+                      'corrplot',
+                      'doParallel')     # Used to enable paraellel processign of the caret train() functions...
 
 ipak <- function(pkg){
         new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
         if (length(new.pkg))
-                install.packages(new.pkg, dependencies = TRUE)
+                install.packages(new.pkg, 
+                                 repos = "http://cran.rstudio.com/", 
+                                 dependencies = TRUE)
         sapply(pkg, require, character.only = TRUE)
 }
 
@@ -45,15 +58,15 @@ ipak(requiredPackages)
 
 # Executive Summary  
 
-The purpose of this document is to develop and answer the [Coursera Peer Assessment for the Practical Machine Learning Course][0]. This reports source code is available via **[GitHub][1]**, if you wish to reveiw the markdown formatting in more detail.
+The purpose of this document is to develop and answer the [Coursera Peer Assessment for the Practical Machine Learning Course][0]. This reports source code is available via **[GitHub][1]**, if you wish to reveiw the **_code_** and **_markdown formatting_** in more detail.
 
 Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the _**quantified self movement**_ – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, _but_ **they rarely quantify how well they do it**. 
 
-The goal of this project is to use the referenced data caputured from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to *predict* how the participants performed the exercises. This report describes: 
+The goal of this project is to use the referenced data captured from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to *predict* how the participants performed the exercises. This report describes: 
 
 1. How a model was built to frame and analyse the data
 1. How cross validation was used to confirm the results and what the estimated expected out of sample error is of the analysis
-1. What choices were made to define the results and guide the anlysis.
+1. What choices were made to define the results and guide the analysis.
 
 seperaralty we use the prediction data to generate 
 
@@ -61,9 +74,11 @@ seperaralty we use the prediction data to generate
 
 **Note:** More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset) on the specific exercises measured and predicted. 
 
-## Data Set Description
+---
 
-Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. All participants were vetted to ensure they could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
+# Data Set Description
+
+The data used in this report was generated using a set of six male partcipants aged between 20-28 years, with little weight lifting experience. Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. All participants were vetted to ensure they could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
 
 The participants were asked to perform barbell lifts *correctly* and *incorrectly* in 5 different ways. Six young healthy participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: 
 
@@ -73,9 +88,11 @@ The participants were asked to perform barbell lifts *correctly* and *incorrectl
 1. (Class D) - lowering the dumbbell only halfway 
 1. (Class E) - throwing the hips to the front 
 
+The data was collected from four 9 degrees of freedom Razor inertial measurement units (IMU), which provide three-axes acceleration, gyroscope and magnetometer data at a joint sampling rate of 45 Hz. Each IMU also featured a Bluetooth module to stream the recorded data to a notebook running the Context Recognition Network Toolbox. The sensors were mounted in the users’ glove, armband, lumbar belt and dumbbell. The tracking system was designed to be as unobtrusive as possible, as these are all equipmentm commonly used by weight lifters.
+
 Read more: http://groupware.les.inf.puc-rio.br/har#dataset#ixzz3gge1uKYv
 
-## Data Import
+## Data Import / Pre-processing
 
 ``` {r loadData, echo=FALSE}
 
@@ -137,50 +154,315 @@ trainBaseData <- read.csv(trainDataPath, na.strings=c("NA","NaN","#DIV/0!", ""))
 # 
 ```
 
-The our first step is to download and load the base data from `pml-training.csv` and `pml-testing.csv` into R. We note that `trainBaseData` has `r dim(trainBaseData)` objects and variables, whilst `testBaseData` has `r dim(testBaseData)` objects and variables.
-
-``` {r stripData, echo=TRUE}
+``` {r stripData, echo=FALSE}
 # Our goal here is to strip out the non applicable data. Our first step was to 
 # update the csv files loaded to strip out miscellaneous values such as spaces 
 # Now we strip all columns from the test data that have NA in them.
 testBaseData <- testBaseData[colSums(is.na(testBaseData)) == 0]
-# Note: The problem_id field in the testBaseData does not exist in the
-# trainBaseData so we remove it prior to subsetting the trainBaseData...  
-testBaseData <- subset(testBaseData,select=-(problem_id))
-# hindsight: Problem_id is used by the submission fucntion to Coursera 
-# we will fix this later... For now it makes for clean thinking...
-
 # Now we strip out the non data columns...
-testBaseData <- subset(testBaseData,select=-(1:7))
-# Now we subset the trainBasedata to match the same set of columns as the
-# testBaseData and do a quick check to compare the column names match...
-trainBaseData <- subset(trainBaseData,select=c(colnames(testBaseData)))
-# t <- compare(colnames(testBaseData),colnames(trainBaseData))
+testCleanData <- subset(testBaseData,select=-(1:7))
+# Now we subset the trainBaseData to match the same set of columns as the 
+# testBaseData... We do something subtle here, we do not want to drop classe 
+# from the trainBaseData, nor do we want to add the column problem_id from the 
+# test data. So we subtract the column name 'problem_id' and replace with 
+# 'classe'. The result is that the subset command leaves the classe column 
+# intact in the trainBaseData frame... Result 53 Columns...
+# 
+# OK - why? Well, we are in the position of seeing the test data set, and the 
+# train data set. We know what columns have data in the test data set logically
+# those are the only ones we really want to look at in the train data set. So we
+# strip out everything else...
+# 
+# Note: If we did not have the test data we could use caret::nearZeroVar() to
+# strip out the superfluous data columns. See Data Validation in the report...
+trainCleanData <- subset(trainBaseData,select=c(colnames(testCleanData[,-53]),'classe'))
+```
+The our first step was to download and load the base data from `pml-training.csv` and `pml-testing.csv` into R. Note that `trainBaseData` has **`r dim(trainBaseData)[1]`** objects and **`r dim(trainBaseData)[2]`** variables, whilst `testBaseData` has **`r dim(testBaseData)[1]`** objects and **`r dim(testBaseData)[2]`** variables. 
+
+As we have access to both the train, and the test data we can deduce which columns have data in the test data set, logically those are the only ones we really want to look at in the train data set. So we strip out everything else from the train data set... 
+
+Thus, after cleaning the data note that `trainBaseData` has **`r dim(trainCleanData)[1]`** objects and **`r dim(trainCleanData)[2]`** variables, whilst `testBaseData` has **`r dim(testCleanData)[1]`** objects and **`r dim(testCleanData)[2]`** variables.
+
+## Data Validation
+
+After removal of the superfluous values, and data columns we move to validate the data in preperation for analysis... We first check for and prepare to filter out near-zero varience predictors, and validate for between-predictor correlations.
+
+### Near Zero Varience Predictors
+
+To filter for near-zero variance predictors, we use the caret package function **`nearZeroVar()`** which will return the column numbers of any predictors that fulfill the conditions outlined. In this case **`nearZeroVar(trainCleanData)`** indicated that the cleaned data set contains no near-zero varience predictors.
+
+Why check? There are potential advantages to removing predictors prior to modeling. First, fewer predictors means decreased computational time and complexity. Second, if two predictors are highly correlated, this implies that they are measuring the same underlying information. Removing one should not compromise the performance of the model and might lead to a more parsimonious and interpretable model. Third, some models can be crippled by predictors with degenerate distributions. In these cases, there can be a significant improvement in model performance and/or stability without the problematic variables.
+
+``` {r showCleanData, echo=FALSE, results='hide'}
+nearZeroVar(trainBaseData) 
+# returns a vector of integers that indicates which columns should be removed. 
+# > In this case the trainbaseData columns: 
+# 6  14  17  26  51  52  53  54  55  56  57  58  59  75  78  79  81  82 
+# 89  92 101 127 130 131 134 137 139 142 143 144 145 146 147 148 149 150 
+# Conclusion: trainBaseData was messy and needed cleaning
+# 
+# Result: trainCleanData 
+# Conclusion: nearZeroVar(trainCleanData) returns 0 columns. Nothing found - good result!
+# nb. Param: `saveMetrics = TRUE` - allows us to print out the result in table form...
+nearZeroVar(trainCleanData, saveMetrics = TRUE) 
+```
+### Correlation Predictors
+
+Similarly, to filter on between-predictor correlations, the `cor` function was used to calculate the correlations between predictor variables:
+
+``` {r correlations}
+correlations <- cor(trainCleanData[,-53])
+dim(correlations)
+```
+To visually examine the correlation structure of the data, we used the `corrplot` package The function `corrplot` has many options including one that will reorder the variables in a way that reveals clusters of highly correlated predictors.
+
+```{r Correlation_Matrix, echo=FALSE, results='hide'}
+corrplot(correlations, 
+         order = "hclust",
+         method="circle", 
+         type = "lower",
+         tl.cex = 0.4,  
+         tl.col = rgb(0, 0, 0))
+title("Figure 1 - Correlation matrix", line = -1.5)
 ```
 
-The data was collected from four 9 degrees of freedom Razor inertial measurement units (IMU), which provide three-axes acceleration, gyroscope and magnetometer data at a joint sampling rate of 45 Hz. Each IMU also featured a Bluetooth module to stream the recorded data to a notebook running the Context Recognition Network Toolbox. The the sensors were mounted in the users’ glove, armband, lumbar belt and dumbbell. The tracking system was designed to be as unobtrusive as possible, as these are all equipmentm commonly used by weight lifters.
+Dark red indicates a highly negative relationship, whilst dark blue indicates highly positive relationships between variables. We observe from the plot that highly correlated predictors are not prevalent which means that all of variables _**could**_ be included in the model. However, it was felt prudent to use the `findCorrelation` function to validate. The  `findCorrelation` function given a threshold of pairwise correlations returns the column numbers denoting the predictors that are recommended for deletion. 
 
-After cleaning the data source we `testBaseData` and `pml-testing.csv` into R. We note that `trainBaseData` has `r dim(trainBaseData)` objects and variables, whilst `testBaseData` has `r dim(testBaseData)` objects and variables.
+```{r findCorrelation, echo=TRUE, results='hide'}
+colTitles <- colnames(trainCleanData) # Save Titles
+highCorr <- findCorrelation(correlations, cutoff = .75)
+length(highCorr)
+sort(highCorr)
+trainCleanData <- trainCleanData[, -highCorr]
+```
 
-``` {r showCleanData, echo=TRUE}
+After cleaning the data we note that `trainCleanData` has **`r dim(trainCleanData)[1]`** objects and **`r dim(trainCleanData)[2]`** variables. We have removed the columns and data shown below from the `trainCleanData`, the reader can cross check visually with the corrplots in **figure 1** and **figure 2** to confirm the recommendations.
+
+```{r Deleted_Columns, fig.margin = TRUE, fig.fullwidth = TRUE, echo=FALSE}
+# Display the list of data removed
+# 
+colTitles[highCorr]
+
+corrplot(correlations[-highCorr,-highCorr], 
+         order = "hclust",
+         method="circle", 
+         type = "lower",
+         tl.cex = 0.4,  
+         tl.col = rgb(0, 0, 0))
+title("Figure 2 - New Correlation matrix", line = -1.5)
+```
+
+``` {r ggcorr, echo=FALSE}
+# Protoype code to use ggplot / ggcorr with wsj theme - not as clean - i.e. Needs work.
+
+# c1 <- as.data.frame(correlations)
+# gp1 <- ggcorr(c1,
+#               angle = -0,
+#               max_size = 6,
+#               geom="point",
+#               size = 2,
+#               hjust = 1,
+#               palette = "PuOr") # colorblind safe, photocopy-able)
+# gp1 <- gp1 + theme_wsj() 
+# gp1 <- gp1 + theme(plot.title = element_text(size=8, lineheight=.8, face="bold"))
+# # gp1 <- gp1 + theme(legend.position = "none")
+# gp1 <- gp1 + theme(panel.margin = unit(20, "lines"))
+# gp1 <- gp1 + theme(plot.margin=unit(c(1,1,1,1), "cm"))
+# gp1 <- gp1 + theme(legend.position=c(.2, .7), 
+#                    plot.title = element_text(size=4, 
+#                                              lineheight=.8, 
+#                                              face="bold"))
+# gp1 <- gp1 + theme(legend.direction = "vertical")
+# gp1 <- gp1 + theme(legend.text = element_text(size = 8))
+# gp1 <- gp1 + theme(title = element_text(size = 8))
+# gp1 <- gp1 + theme(plot.margin=unit(c(.2,0,0,0), "cm"))
+# 
+# gp2 <- ggcorr(c1[-highCorr,-highCorr],
+#               angle = -0,
+#               max_size = 6,
+#               size = 3,
+#               hjust = 1,
+#               palette = "PuOr") # colorblind safe, photocopy-able)
+# gp2 <- gp2 + theme_wsj() 
+# gp2 <- gp2 + theme(plot.title = element_text(size=8, lineheight=.8, face="bold"))
+# gp2 <- gp2 + theme(legend.position = "none")
+# gp2 <- gp2 + theme(legend.margin = unit(c(1,1,1,1), "cm"))
+# #gp2
+# 
+# grid.arrange(gp1, 
+#              gp2,
+#              ncol=2)
+```
+
+---
+
+# Analysis / Choice of Algorythm
+
+Our final choice of algorthm was the **Random Forest**, as this indicated the highest **accuracy** against **system time**. The choice of algorythm was based of our analysis below. In essence, our goal was to validate the **time**, verses **accuracy** trade off of a set of machine alogorthms. 
+
+## Data Split
+
+To setup the validaton work, we first split the data 60 / 40
+``` {r analyse}
+set.seed(12345)
+inTrain <- createDataPartition( trainCleanData$classe, p = 0.70, list = F )
+trainSplitData <- trainCleanData[inTrain,]  # 60%
+testSplitData <- trainCleanData[-inTrain,]  # 40%
+```
+
+## Model Analysis
+
+Our approach was to run four baseline models and compare system time to accuracy. To reduce overall operation time we harness the `doParallel` package to enable paralellel multi core analysis. We test four scenarios 
+
+- Random Forest
+- Stochastic Gradient Boosting
+- Linear Discriminant Analysis
+- Recursive Partitioning 
+
+``` {r modelAnalysis, echo=TRUE, results='hide'}
+
+#random seed
+set.seed(12345)
+
+# Training takes forever on a laptop hence the solution is to try and use as many
+# cores as are available! We detect the number of cores, create a cluster and
+# register the cores for use in the training process. The train function can take 
+# some time...
+# 
+registerDoParallel(makeCluster(detectCores()))
+
+timeRF  <- system.time(modelRF <- train(classe ~ ., method = "rf", data = trainSplitData))    
+timeGBM <- system.time(modelGBM <-train(classe ~ ., method = 'gbm', data = trainSplitData))
+timeLDA <- system.time(modelLDA <-train(classe ~ ., method = 'lda', data = trainSplitData))
+timeDT  <- system.time(modelDT <- train(classe ~ ., method = "rpart", data = trainSplitData))
 
 ```
 
-# Analysis Goals
+```{r performanceReviewPrep, echo=FALSE} 
+predictRFAccuracy <- predict(modelRF, trainSplitData)
+RFResult  <- confusionMatrix(predictRFAccuracy, trainSplitData$classe)
 
-## Analysis Results
+predictLDAAccuracy <- predict(modelGBM , trainSplitData)
+GBMResult <- confusionMatrix(predictLDAAccuracy, trainSplitData$classe)
+
+predictLDAAccuracy <- predict(modelLDA , trainSplitData)
+LDAResult <- confusionMatrix(predictLDAAccuracy, trainSplitData$classe)
+
+predictDTAccuracy <- predict(modelDT , trainSplitData)
+DTResult <- confusionMatrix(predictDTAccuracy, trainSplitData$classe)
+```
+## Performance and Accuracy
+
+Haveing run the models, we are now in a position to compare them.
+
+Model Name                      | Time               | Accuracy
+--------------------------------|--------------------|------
+- Random Forest                 | `r timeRF[3]`      | `r RFResult$overall[1]`
+- Stochastic Gradient Boosting  | `r timeGBM[3]`     | `r GBMResult$overall[1]`
+- Linear Discriminant Analysis  | `r timeLDA[3]`     | `r LDAResult$overall[1]`
+- Recursive Partitioning        | `r timeDT[3]`      | `r DTResult$overall[1]`
+
+The results indicate that the predicted accuracy of the Random Forest algorythm is the best (100% accuracy predicted), hence despite the time required to run the algorythm this is the preferred choice. Note: This is a **_prediction_** based on the `trainSplitData` subset we have tested against. 
+
+---
+
+# Final Model Evaluation and Validation
+
+Now that we have chosen our model (Random Forest), the next step is to tune the model. Our intent is then to evaluate the tuning and identify the variables that are most important to the model. In addition to learning the general patterns in the data, the model has also learned the characteristics of each
+sample’s unique noise. This type of model is said to be over-fit and will usually have poor accuracy when predicting a new sample.
+
+To address this concern, we tuned the final model and performd 10 k-fold repeat operations. Essentially, the data sample is randomly partitioned into k sets of roughly equal size. A model is fit using the all samples except the first subset (called the first fold). The held-out samples are predicted by this model and used to estimate performance measures. The first subset is returned to the training set and procedure repeats with the second subset held out, and so on. The k resampled estimates of performance are summarized (usually with the mean and standard error) and used to understand the relationship between the tuning parameter(s) and model utility.  
+
+```{r FinalTuning}
+registerDoParallel(makeCluster(detectCores()))
+
+modelControl <- trainControl(method = "cv",
+                             number = 10,
+                             verboseIter = FALSE,  # Turn on for debugging
+                             repeats = 10)
+
+finalModelRF <- train( classe ~ .,
+                       method = "rf",
+                       data = trainSplitData,
+                       trControl = modelControl,
+                       allowParallel = TRUE,
+                       verbose = FALSE) # Turn on for debugging
+
+finalModelRFAccuracy <- predict(finalModelRF , testSplitData)
+finalModelRFConfusionM <- confusionMatrix(finalModelRFAccuracy, testSplitData$classe)
+finalModelRFOutofSampleError <- (1 - as.numeric(finalModelRFConfusionM$overall[1]))
+
+```
+
+## Accuracy and Out of Sample Erro Rate
+
+now we have the `finalModelRF`, we can check its accuracy. The model acheives a **`r round((100-finalModelRFOutofSampleError),2)`%** accuracy level with less than **`r round(finalModelRFOutofSampleError,2)`%** _out of sample error_ rate.
+
+### Important Variables
+
+ this point we can move to evaluate which variables have the biggest impact ont the model. The `caret` package has a unifying function called **`varImp`** that is a wrapper for variable importance functions for the following tree-model objects: **_rpart, classbagg (produced by the ipred package’s bagging functions) randomForest, cforest, gbm, and cubist._**
+
+The top five variables are calculated using the `varImp` function and displayed below:
+ 
+```{r ImportantVariables, echo=FALSE, results='show'}
+finalModelRFVarImp = varImp(finalModelRF$finalModel)
+finalModelRFVarImp$var<-rownames(finalModelRFVarImp)
+finalModelRFVarImp = as.data.frame(finalModelRFVarImp[with(finalModelRFVarImp, order(finalModelRFVarImp$Overall, decreasing=TRUE)), ])
+rownames(finalModelRFVarImp) <- NULL
+head(finalModelRFVarImp)
+```
+
+# Prediction Result
+
+Having completed the tuning and cross validation of the `finalModelRF` we now move to use it to predict the `testCleanData` results. These results are then written to disk and subsequently uploaded to the coursera.
+
+``` {r predict_result}
+# predict(modelRF, testCleanData)
+# predict(modelRF, testCleanData[-highCorr])
+# 
+# predict(finalModelRF, testCleanData)
+answers <- predict(finalModelRF, testCleanData[-highCorr])
+answers
+
+pml_write_files = function(x){
+        n = length(x)
+        for(i in 1:n){
+                filename = paste0("problem_id_",i,".txt")
+                write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+        }
+}
+
+# Write out the files
+pml_write_files(answers)
+```
 
 # Conclusions
+
+The reader can observe that we were able to take the learning data set down from a **160 Columns** to **32 Columns**, and apply the **Random Forest Algorythm** and achieve a projected prediction accuracy of **`r round((100-finalModelRFOutofSampleError),2)`%** with less than **`r round(finalModelRFOutofSampleError,2)`%** out of sample error rate.
+
+Random Forests in summary are easy to learn and use for both professionals and lay people - with little research and programming required and may be used by people without a strong statistical background. Simply put, you can safely make more accurate predictions without most basic mistakes common to other methods.
+
+- Accuracy
+- Runs efficiently on large data bases
+- Handles thousands of input variables without variable deletion
+- Gives estimates of what variables are important in the classification
+- Generates an internal unbiased estimate of the generalization error as the forest building progresses
+- Provides effective methods for estimating missing data
+- Maintains accuracy when a large proportion of the data are missing
+- Provides methods for balancing error in class population unbalanced data sets
+- Generated forests can be saved for future use on other data
+- Prototypes are computed that give information about the relation between the variables and the classification.
+- Computes proximities between pairs of cases that can be used in clustering, locating outliers, or (by scaling) give interesting views of the data
+- Capabilities of the above can be extended to unlabeled data, leading to unsupervised clustering, data views and outlier detection
+- Offers an experimental method for detecting variable interactions
 
 \pagebreak
 
 # Appendix A
 
-
 \pagebreak
 
-
-# **References**
+## **References**
 
 - *Data Classification of Body Postures and Movements.* 
 
@@ -218,8 +500,18 @@ After cleaning the data source we `testBaseData` and `pml-testing.csv` into R. W
 - *Think Stats, 2nd Edition*
 
     - By: Allen B. Downey Publisher: O'Reilly Media, Inc. Pub. Date: October 28, 2014 Print ISBN-13: 978-1-4919-0733-7
+    
+- *Caret Training*
+
+    - http://topepo.github.io/caret/training.html
 
 [0]: https://class.coursera.org/predmachlearn-030
 [1]: https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/
 [2]: https://github.com/Technophobe01/courses/tree/master/08_RegressionModels/00_Course_Work/CourseProject
 
+## Environment
+
+```{r Environment, eval=TRUE, echo=FALSE, message=FALSE}
+# Display R version info
+R.version
+```
