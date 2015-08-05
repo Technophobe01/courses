@@ -510,7 +510,7 @@ Random Forests in summary are easy to learn and use for both professionals and l
 [1]: https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/
 [2]: https://github.com/Technophobe01/courses/tree/master/08_RegressionModels/00_Course_Work/CourseProject
 [3]: https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.Rmd
-[4]: https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.html
+[4]: http://technophobe01.github.io/courses/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.html
 [5]: https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.pdf
 
 ## Environment
