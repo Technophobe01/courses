@@ -10,7 +10,7 @@
 
 <meta name="author" content="Technophobe01" />
 
-<meta name="date" content="2015-07-26" />
+<meta name="date" content="2015-08-04" />
 
 <title>08 Machine Learning - Course Project</title>
 
@@ -64,13 +64,13 @@ img {
 <div id="header">
 <h1 class="title">08 Machine Learning - Course Project</h1>
 <h4 class="author"><em>Technophobe01</em></h4>
-<h4 class="date"><em>2015-07-26</em></h4>
+<h4 class="date"><em>2015-08-04</em></h4>
 </div>
 
 
 <div id="executive-summary" class="section level1">
 <h1><span class="header-section-number">1</span> Executive Summary</h1>
-<p>The purpose of this document is to develop and answer the <a href="https://class.coursera.org/predmachlearn-030">Coursera Peer Assessment for the Practical Machine Learning Course</a>. This reports source code is available via <strong><a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/">GitHub</a></strong>, if you wish to review the <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.Rmd"><strong><em>code</em></strong></a>, <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.Rmd"><strong><em>markdown formatting</em></strong></a> or <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.html"><strong><em>html</em></strong></a>, or <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.pdf"><strong><em>pdf</em></strong></a> output in more detail.</p>
+<p>The purpose of this document is to develop and answer the <a href="https://class.coursera.org/predmachlearn-030">Coursera Peer Assessment for the Practical Machine Learning Course</a>. This reports source code is available via <strong><a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/">GitHub</a></strong>, if you wish to review the <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.Rmd"><strong><em>code</em></strong></a>, <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.Rmd"><strong><em>markdown formatting</em></strong></a> or <a href="http://technophobe01.github.io/courses/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.html"><strong><em>html</em></strong></a>, or <a href="https://github.com/Technophobe01/courses/blob/master/08_PracticalMachineLearning/00_Course_Work/CourseProject/CourseProject.pdf"><strong><em>pdf</em></strong></a> output in more detail.</p>
 <p>Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the <em><strong>quantified self movement</strong></em> – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, <em>but</em> <strong>they rarely quantify how well they do it</strong>.</p>
 <p>The goal of this project is to use the referenced data captured from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to <em>predict</em> how the participants performed the exercises. This report describes:</p>
 <ol style="list-style-type: decimal">
@@ -193,22 +193,22 @@ timeDT  &lt;- system.time(modelDT &lt;- train(classe ~ ., method = &quot;rpart&q
 <tbody>
 <tr class="odd">
 <td align="left">- Random Forest</td>
-<td align="left">548.386</td>
+<td align="left">731.053</td>
 <td align="left">1</td>
 </tr>
 <tr class="even">
 <td align="left">- Stochastic Gradient Boosting</td>
-<td align="left">181.396</td>
+<td align="left">232.964</td>
 <td align="left">0.9640387</td>
 </tr>
 <tr class="odd">
 <td align="left">- Linear Discriminant Analysis</td>
-<td align="left">2.437</td>
+<td align="left">3.773</td>
 <td align="left">0.5853534</td>
 </tr>
 <tr class="even">
 <td align="left">- Recursive Partitioning</td>
-<td align="left">4.319</td>
+<td align="left">5.323</td>
 <td align="left">0.5276261</td>
 </tr>
 </tbody>
@@ -246,12 +246,12 @@ finalModelRFOutofSampleError &lt;- (1 - as.numeric(finalModelRFConfusionM$overal
 <p>At this point we can move to evaluate which variables have the biggest impact on the model. The <code>caret</code> package has a unifying function called <strong><code>varImp</code></strong> that is a wrapper for variable importance functions for the following tree-model objects: <strong><em>rpart, classbagg (produced by the ipred package’s bagging functions) randomForest, cforest, gbm, and cubist.</em></strong></p>
 <p>The top five variables are calculated using the <code>varImp</code> function and displayed below:</p>
 <pre><code>##    Overall               var
-## 1 780.0027          yaw_belt
-## 2 607.2463 magnet_dumbbell_z
-## 3 546.0555     magnet_belt_y
-## 4 520.7561     pitch_forearm
-## 5 484.7676     roll_dumbbell
-## 6 480.2670      roll_forearm</code></pre>
+## 1 764.7225          yaw_belt
+## 2 615.4489 magnet_dumbbell_z
+## 3 545.2149     pitch_forearm
+## 4 543.1500     magnet_belt_y
+## 5 492.5342     roll_dumbbell
+## 6 488.6683      roll_forearm</code></pre>
 </div>
 </div>
 </div>
