@@ -1,5 +1,6 @@
 require(shiny)
 require(ggplot2)
+require(ggthemes)
 
 options(scipen = 999)
 
