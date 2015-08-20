@@ -42,11 +42,18 @@ printDescription <- function(name,description){
 
 shinyServer(function(input,output){
 
-  # time series of an indicator
+  #############################################################################
+  ##
+  ##  time series of an indicator...
+  ##
+  #############################################################################
+
   output$timeSeries <-  renderPlot({
     p <- ggplot(
       worldBank,
       aes_string( x = 'Year', y = input$indicator, colour = "Country"))
+    p <- p + theme_wsj() + theme(axis.title=element_text(size=12))
+    p <- p + theme(axis.title.y = element_text(angle=90))
     p <- p + geom_line()
     p <- p + geom_point()
     p <- p + ylab(codeToName[input$indicator])
@@ -58,44 +65,32 @@ shinyServer(function(input,output){
     print(p)
   })
 
-  # bubble chart
-  output$bubbleChart <- renderPlot({
-    p <- bubbleChart(
-      subset(worldBank, Year == input$year),
-      x = input$xAxis,
-      y = input$yAxis,
-      radius = "SP.POP.TOTL",
-      colour = "Country")
-
-    p <- p + scale_color_brewer(type="qual",palette='Set1')
-    p <- p + guides(size = guide_legend(title = codeToName['SP.POP.TOTL']))
-    p <- p + xlab(codeToName[input$xAxis])
-    p <- p + ylab(codeToName[input$yAxis])
-    p <- p + scale_size_area(max_size=14)
-    p <- p + ggtitle(paste("World Bank Economic Data - Year: ",input$year))
-    print(p)
-  })
-
-  # bubble chart
-  output$bubbleChart <- renderPlot({
-    p <- bubbleChart(
-      subset(worldBank, Year == input$year),
-      x = input$xAxis,
-      y = input$yAxis,
-      radius = "SP.POP.TOTL",
-      colour = "Country")
-
-    p <- p + scale_color_brewer(type="qual",palette='Set1')
-    p <- p + guides(size = guide_legend(title = codeToName['SP.POP.TOTL']))
-    p <- p + xlab(codeToName[input$xAxis])
-    p <- p + ylab(codeToName[input$yAxis])
-    p <- p + scale_size_area(max_size=14)
-    p <- p + ggtitle(paste("World Bank Economic Data - Year: ",input$year))
-    print(p)
-  })
-
   output$descriptionTab1 <- renderPrint({
     printDescription(codeToName[input$indicator], codeToDescription[input$indicator])
+  })
+
+  ###############################################################################
+  ##
+  ##  Bubble Chart by Year...
+  ##
+  ###############################################################################
+
+  output$bubbleChart <- renderPlot({
+    p <- bubbleChart(
+      subset(worldBank, Year == input$year),
+      x = input$xAxis,
+      y = input$yAxis,
+      radius = "SP.POP.TOTL",
+      colour = "Country")
+    p <- p + theme_wsj() + theme(axis.title=element_text(size=12))
+    p <- p + theme(axis.title.y = element_text(angle=90))
+    p <- p + scale_color_brewer(type="qual",palette='Set1')
+    p <- p + guides(size = guide_legend(title = codeToName['SP.POP.TOTL']))
+    p <- p + xlab(codeToName[input$xAxis])
+    p <- p + ylab(codeToName[input$yAxis])
+    p <- p + scale_size_area(max_size=14)
+    p <- p + ggtitle(paste("World Bank Economic Data - Year: ",input$year))
+    print(p)
   })
 
   output$descriptionTab2 <- renderPrint({
