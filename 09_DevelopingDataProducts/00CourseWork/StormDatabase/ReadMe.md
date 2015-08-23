@@ -2,13 +2,16 @@
 title: "Readme"
 author: "Technophobe1"
 date: "August 18, 2015"
-output: html_document
+output: 
+  html_document: 
+    theme: united
 ---
 
-Developing Data Prododucts - CourseProject
+[Coursera: Developing Data Products][9]
 =========================
-This is a submission for Coursera: Developing Data Products- Course Project
+#### Course Project: Submission
 
+---
 ## Synopsis
 Our aim to describe the impact of severe weather events in the United States between the years **1950** to **2011**. This analysis is intended to address the following questions:
 
@@ -60,3 +63,4 @@ The events most harmful to property based on the data are Floods, Huricanes and 
 [6]: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2 "Storm Data"
 [7]: https://technophobe01.shinyapps.io/StormDatabase
 [8]: https://rpubs.com/Technophobe01/StormDatabase
+[9]: https://class.coursera.org/devdataprod-031
