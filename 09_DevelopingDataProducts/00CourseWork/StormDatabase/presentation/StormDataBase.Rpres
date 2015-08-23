@@ -1,0 +1,65 @@
+Coursera:
+========================================================
+# Developing Data Products
+### Course Project: Submission
+
+Author: Technophobe01
+
+Date: August 18, 2015
+
+```{r setOptions, echo=FALSE, echo=FALSE, message=FALSE, results='hide', cache=TRUE}
+require(knitr)
+opts_chunk$set(fig.width=10, fig.height=8)
+require(knitcitations)
+cleanbib()
+```
+
+Synopsis
+========================================================
+transition: concave
+
+Our aim to describe the impact of severe weather events in the United States between the years **1950** to **2011**.
+
+The **_[shiny][1]_** analysis is intended to **_interactively_** address the following questions - **Across the United States:**
+- Which types of events (as indicated in the eventType variable) are most harmful with respect to population health?
+- Which types of events have the greatest economic consequences?
+
+The investigation is based off an analysis of National Oceanic and Atmospheric Administration ([NOAA][2]) data which is collected from various sources across the U.S.
+
+[1]: https://technophobe01.shinyapps.io/StormDatabase
+[2]: http://www.noaa.gov/
+
+DataSet History
+========================================================
+```{r echo=FALSE, results='hide', cache=TRUE}
+setwd("~/Documents/Dropbox/dev/cousera/courses/09_DevelopingDataProducts/00CourseWork/StormDatabase/presentation")
+require(R.utils)
+cleanStormData <- read.csv("../data/cleanStormData.csv.bz2")
+cleanStormData$X <- NULL
+str(cleanStormData)
+```
+- The cleaned data set contains **`r dim(cleanStormData)[2]`** variables and **`r dim(cleanStormData)[1]`** objects.
+- Data Samples start in **1950** and go through to **2011**
+   + **1950 - 1993** - Records are extracted from manually typed Storm Data Publication.
+   + **1993 to the present** - built from the records in the database.
+   + **Paradox Database Files**: From 1996-1999, event type = free-text field. In 2000 the NWS added a drop-down selector for Event Type on the data entry interface, standardizing the Event Type values sent to NCDC.
+   + **Comma-Separated Text (CSV) Files**: In October 2006, the NWS switched to supply NCDC with comma separated (CSV) text files that NCDC import into their own database for the Storm Data publication and Storm Events Database.
+
+Analysis - Weather Event Health Impact
+========================================================
+
+- The events most harmful to **health** based on the data and review period are **Tornados**, **Heat** and **Wind Storms**.
+  + See **_[shiny][1]_** interactive Economic impact plot map for further details.
+
+![Population Damage](./StormDataBase-figure/PopulationDamage-1.png)
+
+[1]: https://technophobe01.shinyapps.io/StormDatabase
+
+Analysis - Weather Event Property Impact
+========================================================
+
+- The events most harmful to **property** based on the data and review period are **Floods**, **Huricanes** and **Tornados**.
+  + See **_[shiny][1]_** interactive Population impact plot map for further details.
+![Population Damage](./StormDataBase-figure/PropertyDamage-1.png)
+
+[1]: https://technophobe01.shinyapps.io/StormDatabase
