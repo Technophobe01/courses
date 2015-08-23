@@ -61,17 +61,6 @@ bubbleChart <- function(X,x,y,radius,colour, alpha = 0.6){
 ##
 #################################################################################
 
-eventImpactSummary <- stormData %>%
-  group_by(eventType) %>%
-  summarise(eventFatalities = sum(FATALITIES),
-            eventInjuries = sum(INJURIES),
-            eventCount = n() ) %>%
-  mutate(popImpacted = eventFatalities + eventInjuries) %>%
-  mutate(eventFreq = popImpacted / eventCount ) %>%
-  arrange(desc(popImpacted))
-
-
-
 manipulate(
   {
     propertyDamageSummary <- stormData %>%

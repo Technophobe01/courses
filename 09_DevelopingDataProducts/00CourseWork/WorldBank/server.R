@@ -30,7 +30,7 @@ bubbleChart <- function(X,x,y,radius,colour, alpha = 0.6){
 
 printDescription <- function(name,description){
   s <- name
-  s <- paste0(s, "\n", paste(rep("=",nchar(name)),collapse=''))
+  s <- paste0(s, "\n", paste(rep("=",nchar(name)),collapse = ''))
   s <- paste0(s, "\n", description)
   cat(s)
 }
@@ -53,14 +53,14 @@ shinyServer(function(input,output){
     p <- ggplot(
       worldBank,
       aes_string( x = 'Year', y = input$indicator, colour = "Country"))
-    p <- p + theme_wsj() + theme(axis.title=element_text(size=12))
-    p <- p + theme(axis.title.y = element_text(angle=90))
+    p <- p + theme_wsj() + theme(axis.title = element_text(size = 12))
+    p <- p + theme(axis.title.y = element_text(angle = 90))
     p <- p + geom_line()
     p <- p + geom_point()
     p <- p + ylab(codeToName[input$indicator])
-    p <- p + scale_color_brewer(type="qual",palette='Set1')
+    p <- p + scale_color_brewer(type = "qual",palette = 'Set1')
     p <- p + guides(colour = guide_legend(override.aes = list(alpha = 1, size = 5)))
-    if(input$logScale) {
+    if (input$logScale) {
       p <- p + scale_y_log10()
     }
     print(p)
@@ -83,13 +83,13 @@ shinyServer(function(input,output){
       y = input$yAxis,
       radius = "SP.POP.TOTL",
       colour = "Country")
-    p <- p + theme_wsj() + theme(axis.title=element_text(size=12))
-    p <- p + theme(axis.title.y = element_text(angle=90))
-    p <- p + scale_color_brewer(type="qual",palette='Set1')
+    p <- p + theme_wsj() + theme(axis.title = element_text(size = 12))
+    p <- p + theme(axis.title.y = element_text(angle = 90))
+    p <- p + scale_color_brewer(type = "qual",palette = 'Set1')
     p <- p + guides(size = guide_legend(title = codeToName['SP.POP.TOTL']))
     p <- p + xlab(codeToName[input$xAxis])
     p <- p + ylab(codeToName[input$yAxis])
-    p <- p + scale_size_area(max_size=14)
+    p <- p + scale_size_area(max_size = 14)
     p <- p + ggtitle(paste("World Bank Economic Data - Year: ",input$year))
     print(p)
   })

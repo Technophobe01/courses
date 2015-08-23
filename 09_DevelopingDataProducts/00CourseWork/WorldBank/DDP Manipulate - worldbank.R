@@ -83,6 +83,6 @@ manipulate(
     gp <- gp + ggtitle(paste("World Bank Economic Data - Year: ",SliderYear))
 
     print(gp)
-  }, SliderYear=slider(min = 1961, max = 2011, initial = 2000, ticks=TRUE))
+  }, SliderYear = slider(min = 1961, max = 2011, initial = 2000, ticks=TRUE))
 
 
