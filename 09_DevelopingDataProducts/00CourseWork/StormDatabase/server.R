@@ -206,7 +206,7 @@ shinyServer(function(input,output) {
       options = list(
         region = "US", displayMode = "regions",
         resolution = "provinces",
-        width = 900, height = 600,
+        width = 700, height = 500,
         colorAxis = "{colors:['#FFFFFF', '#0000FF']}"
       )
     )
