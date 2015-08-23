@@ -1,10 +1,11 @@
 ---
 title: "Readme"
-author: "Technophobe1"
+author: "Technophobe01"
 date: "August 18, 2015"
 output: 
   html_document: 
-    theme: united
+    fig_caption: yes
+    theme: spacelab
 ---
 
 [Coursera: Developing Data Products][9]

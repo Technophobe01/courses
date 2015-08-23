@@ -1,39 +1,12 @@
 # server for full dashboard
 
-requiredPackages <- c(
-  "shiny",
-  "rmarkdown",
-  "RCurl",
-  "ggplot2",   # Used to plot graphics
-  "dplyr",     # Used for data manipulation (very Cool!)
-  "scales",    # Used to scale map data to aesthetics,
-  # and provide methods for automatically
-  # determining breaks and labels for axes
-  # and legends.
-  "knitr",
-  "R.utils",   # Used for unziping the bz2 zip file...
-  "lubridate", # Used for time formatting
-  "reshape2",  # Used to manipulate and reshape the data
-  "gridExtra", # Used to map out plots in Grids
-  "ggthemes",  # Extra themes, scales and geoms for ggplot (Very cool!)
-  "xtable",    # Used to print R objects HTML tables)
-  "maps",
-  "rCharts",
-  "reshape2",
-  "data.table",
-  "mapproj",
-  "googleVis"
-)
-
-ipak <- function(pkg)
-{
-  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
-  if (length(new.pkg))
-    install.packages(new.pkg, dependencies = TRUE)
-  sapply(pkg, require, character.only = TRUE)
-}
-
-ipak(requiredPackages)
+require(shiny)
+require(shinyapps)
+require(ggplot2)
+require(dplyr)
+require(ggthemes)
+require(R.utils)
+require(googleVis)
 
 options(scipen = 999)
 
@@ -72,12 +45,14 @@ shinyServer(function(input,output) {
         y = eventCount,
         color = eventType,
         label = eventType,
-        xmin = -250,
-        ymin = -600,
+        xmin = -500,
+        ymin = -5000,
         xmax = 120000000,
-        ymax = 1000
+        ymax = (eventCount + 5000)
       )
     )
+    gp <- gp + theme_wsj() + theme(axis.title = element_text(size = 12))
+    gp <- gp + theme(axis.title.y = element_text(angle = 90))
     gp <- gp + geom_point(aes(size = totalDamage))
     gp <- gp + scale_size_area(max_size = 20)
     gp <-
@@ -130,10 +105,12 @@ shinyServer(function(input,output) {
         color = eventType,
         label = eventType,
         xmin = -250,
-        ymin = -250,
-        ymax = eventInjuries + 1000
+        ymin = -500,
+        ymax = eventInjuries + 2000
       )
     )
+    gp <- gp + theme_wsj() + theme(axis.title = element_text(size = 12))
+    gp <- gp + theme(axis.title.y = element_text(angle = 90))
     gp <- gp + geom_point(aes(size = eventCount))
     gp <- gp + scale_size_area(max_size = 20)
     gp <-

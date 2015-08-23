@@ -491,7 +491,7 @@ print(xtable(head(eventImpactSummary, n = 10),
       include.rownames = F)
 ```
 
-```{r fig.width=10, fig.height=8}
+```{r PopulationDamage, fig.width=10, fig.height=8}
 ## Plot mostDangerous Events, sized by frequency
 options(scipen=999)
 gp <- ggplot(head(eventImpactSummary, n = 10), 
@@ -503,6 +503,8 @@ gp <- ggplot(head(eventImpactSummary, n = 10),
                  ymin = -5000,
                  ymax = eventInjuries + 1000
                  ))
+gp <- gp + theme_wsj() + theme(axis.title = element_text(size = 12))
+gp <- gp + theme(axis.title.y = element_text(angle = 90))
 gp <- gp + geom_point(aes(size = eventCount))
 gp <- gp + scale_size_area(max_size=20)
 gp <- gp + geom_point(size = 5) + geom_text(size = 4, hjust = .7, vjust = 3 )
@@ -537,9 +539,9 @@ gp <- ggplot(head(propertyDamageSummary, n = 10),
                  color=eventType,
                  label = eventType,
                  xmin = -1000,
-                 ymin = -15000,
+                 ymin = -20000,
                  xmax = 110000000000, 
-                 ymax = 100000 ))
+                 ymax = 380000 ))
 gp <- gp + geom_point(aes(size = totalDamage))
 gp <- gp + scale_size_area(max_size=20)
 gp <- gp + geom_point(size = 5) + geom_text(size = 4, hjust = .5, vjust = 4 )

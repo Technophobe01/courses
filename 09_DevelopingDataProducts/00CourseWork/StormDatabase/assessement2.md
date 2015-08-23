@@ -720,7 +720,7 @@ gp <- gp + ggtitle("Events most harmful with respect to population\n")
 print(gp)
 ```
 
-![](assessement2_files/figure-html/unnamed-chunk-14-1.png) 
+![](assessement2_files/figure-html/PopulationDamage-1.png) 
 
 ## Events most harmful to property
 
