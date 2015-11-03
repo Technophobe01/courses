@@ -181,10 +181,10 @@ if ( !exists("yelpUserData") ) {
 # Now we just access the database by name and no password is exposed in the
 # source code...
 # 
-conDB2 <- dbConnect(RMySQL::MySQL(), group = 'CapstoneDB')
+conDB <- dbConnect(RMySQL::MySQL(), group = 'CapstoneDB')
 
 # The Next step is to flatten each file and then write it to the MySQL database 
-# 'Capstone' we created ealier. Note that we use Mamp Pro standard settings. i.e. 
+# 'Capstone' we created earlier. Note that we use Mamp Pro standard settings. i.e. 
 # Launch MAMP Pro, launch RSTUDIO...
 # 
 # OK, now write the tables out to the database 'Capstone'
@@ -234,6 +234,27 @@ dbDisconnect(conDB)
 
 ```
 
+``` {r InitialAnalysis}
+# Use src_mysql to connect to an existing mysql or mariadb database, and tbl to
+# connect to tables within that database. If you are running a local mysqlql
+# database, leave all parameters set as their defaults to connect. If you're
+# connecting to a remote database, ask your database administrator for the
+# values of these variables.
+# 
+# User name and password. Rather than supplying a username and password here,
+# it's better to save them in my.cnf, as described in MySQL. # In that case,
+# supply NULL to both user and password.
+
+conDB <- src_mysql(dbname = 'Capstone', user = NULL, password = NULL)
+
+# Select the yelpBusinessData$city data from the sql database...
+MyData <- as.data.frame(conDB %>% tbl("yelpBusinessData") %>% select(city))
+head(MyData,5)
+tail(MyData,5)
+# How many Unique Cities
+unique(MyData)
+dbDisconnect(conDB)
+```
 ## Methods and Data
 - Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
 
