@@ -154,17 +154,37 @@ if ( !exists("yelpUserData") ) {
 ```{r create_database}
 # We now have the data loaded... Next step is to move the data into a MySql 
 # database. This is good practice as we can then use dplyr to access and
-# manipulate the data without have to keep all the tables in memory...
+# manipulate the data without having to keep all the tables in memory...
 
-conDB <- dbConnect(RMySQL::MySQL(),
-                 user = 'root',
-                 password = 'ToshibaMamaml34^!',
-                 host = '127.0.0.1',
-                 port = 3306,
-                 dbname = 'Capstone')
+# The dbConnect command below connects the database, rather than putting the
+# password and data in the file, like so:
+# 
+# conDB <- dbConnect(RMySQL::MySQL(),
+#                 user = 'root',
+#                 password = 'SecurityRisk!!!!',
+#                 host = '127.0.0.1',
+#                 port = 3306,
+#                 dbname = 'Capstone')
+#
+# we create a seperate '~/.my.cnf' file, which we place in the users top level
+# directory, we then access the data via the database name...
+# 
+# Example '~/.my.cnf' file...
+# 
+# [client]
+# user = root
+# host = localhost
+# password = NotTelling!!!!!
+# [theDatabase]
+# database = Capstone
+#
+# Now we just access the database by name and no password is exposed in the
+# source code...
+# 
+conDB2 <- dbConnect(RMySQL::MySQL(), group = 'CapstoneDB')
 
 # The Next step is to flatten each file and then write it to the MySQL database 
-# 'Capstone' we created ealier. Note that I use Map Pro standard settings. i.e. 
+# 'Capstone' we created ealier. Note that we use Mamp Pro standard settings. i.e. 
 # Launch MAMP Pro, launch RSTUDIO...
 # 
 # OK, now write the tables out to the database 'Capstone'
