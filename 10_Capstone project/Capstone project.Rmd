@@ -1,0 +1,225 @@
+---
+title: "Data Science Capstone - Yelp Dataset Analysis"
+author: "Technophobe1"
+date: "November 2, 2015"
+output: 
+  html_document: 
+    highlight: tango
+    number_sections: yes
+    theme: cerulean
+    toc: yes
+---
+
+```{r setOptions, echo=FALSE, echo=FALSE, message=FALSE, results='hide', cache=TRUE}
+require(knitr)
+opts_chunk$set(fig.width = 10, fig.height = 8)
+require(knitcitations)
+cleanbib()
+```
+
+```{r Setup, echo=FALSE, results='hide'}
+setwd("~/Documents/Dropbox/dev/cousera/courses/10_Capstone project")
+
+requiredPackages <- c("devtools","dplyr","tidyr","data.table","ggplot2","ggvis","RMySQL", "jsonlite", "psych")
+
+ipak <- function(pkg)
+{
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE)
+}
+
+ipak(requiredPackages)
+```
+
+# Title
+- Predictive Review by Location and Business Type
+
+## Introduction
+- A description of the question/problem and the rationale for studying it
+
+The problem and question I wish to ask and answer is 
+
+_**"In what region of the Yelp Dataset Challenge dataset does the highest density of a particular form of restaurant occur and which region gives the best review to a particular form of restaurant in the context of a particular event such as Mothers Day, or Fathers Day"**_. Secondly, _**"Can we predict that restuarants of type X in region Y have a higher probability of a good review?"**_"
+
+The intent is to combine both location, and temporal data and natural language processing to determine if a correlation exists between location, type of restaurant and event. For example can we determine if the hypothesis _**"People in region X, have the highest density of Chinese restuarants, yet give the best reviews to Italian restaurants on Father's Day"**_ is true, false or non-answerable based on the data-set we are using?
+
+## Data Import
+
+```{r Data_Download}
+dataDir         <- "./data"
+fileUrl         <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/yelp_dataset_challenge_academic_dataset.zip"
+filePath        <- file.path(dataDir)
+
+# Does the directory Exist? If it does'nt create it
+if (!file.exists(dataDir)) {
+  dir.create(dataDir)
+}
+
+# Now we check if we have downloaded the data already into 
+# "./data/yelp_dataset_challenge_academic_dataset". If not, then we download the
+# zip file... and extract it under the data directory as 
+# './data/yelp_dataset_challenge_academic_dataset'...
+
+if (!file.exists( file.path(dataDir,"yelp_dataset_challenge_academic_dataset"))) {
+  temp <- tempfile()
+  download.file(fileUrl, temp, mode = "wb", method = "curl")
+  unzip(temp, exdir = dataDir)
+  unlink(temp)
+}
+```
+
+```{r Data_Import}
+# OK, now we have downloaded the data, we now need to import it into R and clean
+# it... We have five datasets:
+#  
+#   1) Business, 2) Checkin, 3) Review, 4) tip, 5) User
+# 
+
+# Load the dataset in preperation for manipulation... note that we first check
+# to see if the datframe exists as we do not want to reload the data every time
+# we compile the markdown file :-)
+
+dataDir <- "./data/yelp_dataset_challenge_academic_dataset"
+
+if ( !exists("yelpBusinessData") )
+{
+  if (file.exists( file.path(dataDir,"yelpBusinessData.rds"))) {
+    yelpBusinessData <- readRDS(file.path(dataDir,"yelpBusinessData.rds"))
+  } else {
+    yelpBusinessDataFilePath <- file.path(dataDir, 
+                                          "yelp_academic_dataset_business.json")
+    yelpBusinessData <- fromJSON(sprintf("[%s]",
+                                         paste(readLines(yelpBusinessDataFilePath),
+                                               collapse = ",")),
+                                 flatten = FALSE)
+    str(yelpBusinessData, max_level = 1)
+    # Fix the column name duplication issue
+    # If and when you flatten the data the you create two columns wiht the same column id
+    # 
+    # i.e. yelpBusinessData$attributes.Good.for.kids
+    # 
+    # This fixes the issue by renaming the first column...
+    colnames(yelpBusinessData$attributes)[7] <- "Good_For_Kids"
+    saveRDS( yelpBusinessData, file.path(dataDir, "yelpBusinessData.rds"))
+  }
+}
+
+if ( !exists("yelpCheckInData") ) {
+  if (file.exists( file.path(dataDir,"yelpCheckInData.rds"))) {
+    yelpCheckInData <- readRDS( file.path(dataDir, "yelpCheckInData.rds"))
+  } else {
+    yelpCheckInDataFilePath <- file.path(dataDir, "yelp_academic_dataset_checkin.json")
+    yelpCheckInData <- fromJSON(sprintf("[%s]", paste(readLines(yelpCheckInDataFilePath), collapse = ",")), flatten = FALSE)
+    str(yelpCheckInData)
+    saveRDS( yelpCheckInData, file.path(dataDir, "yelpCheckInData.rds"))
+  }
+}
+
+if ( !exists("yelpReviewData") ) {
+  if (file.exists( file.path(dataDir,"yelpCheckInData.rds"))) {
+    yelpReviewData <- readRDS(file.path(dataDir, "yelpReviewData.rds"))
+  } else {
+    yelpReviewDataFilePath <- file.path(dataDir, "yelp_academic_dataset_review.json")
+    yelpReviewData <- fromJSON(sprintf("[%s]", paste(readLines(yelpReviewDataFilePath), collapse = ",")), flatten = FALSE)
+    str(yelpReviewData)
+    saveRDS( yelpReviewData, file.path(dataDir, "yelpReviewData.rds"))
+  }
+}
+
+if ( !exists("yelpTipData") ) {
+  if (file.exists( file.path(dataDir,"yelpTipData.rds"))) {
+    yelpTipData <- readRDS(file.path(dataDir, "yelpTipData.rds"))
+  } else {
+    yelpTipDataFilePath <- file.path(dataDir, "yelp_academic_dataset_tip.json")
+    yelpTipData <- fromJSON(sprintf("[%s]", paste(readLines(yelpTipDataFilePath), collapse = ",")), flatten = FALSE)
+    str(yelpTipData)
+    saveRDS( yelpTipData, file.path(dataDir, "yelpTipData.rds"))
+  }
+}
+
+if ( !exists("yelpUserData") ) {
+  if (file.exists( file.path(dataDir,"yelpUserData.rds"))) {
+     yelpUserData <- readRDS(file.path(dataDir, "yelpUserData.rds"))
+  } else {
+    yelpUserDataFilePath <- file.path(dataDir, "yelp_academic_dataset_user.json")
+    yelpUserData <- fromJSON(sprintf("[%s]", paste(readLines(yelpUserDataFilePath), collapse = ",")), flatten = FALSE)
+    str(yelpUserData)
+    saveRDS( yelpUserData, file.path(dataDir, "yelpUserData.rds"))
+  }
+}
+```
+
+```{r create_database}
+# We now have the data loaded... Next step is to move the data into a MySql 
+# database. This is good practice as we can then use dplyr to access and
+# manipulate the data without have to keep all the tables in memory...
+
+conDB <- dbConnect(RMySQL::MySQL(),
+                 user = 'root',
+                 password = 'ToshibaMamaml34^!',
+                 host = '127.0.0.1',
+                 port = 3306,
+                 dbname = 'Capstone')
+
+# The Next step is to flatten each file and then write it to the MySQL database 
+# 'Capstone' we created ealier. Note that I use Map Pro standard settings. i.e. 
+# Launch MAMP Pro, launch RSTUDIO...
+# 
+# OK, now write the tables out to the database 'Capstone'
+# 
+# We check to see if the tables exist in Capstone as we do not want to re-create
+# if they already exists...
+# 
+if (!dbExistsTable(conDB, "yelpBusinessData") ) {
+  yelpBusinessDataFlat <- flatten(yelpBusinessData, recursive = TRUE)
+  yelpBusinessDataFlat$categories <- sapply(yelpBusinessDataFlat$categories, toString)
+  yelpBusinessDataFlat$neighborhoods <- sapply(yelpBusinessDataFlat$neighborhoods, toString)
+  yelpBusinessDataFlat$`attributes.Accepts Credit Cards` <- sapply(yelpBusinessDataFlat$`attributes.Accepts Credit Cards`, toString)
+  dbWriteTable(conn = conDB, name = 'yelpBusinessData', value = as.data.frame(yelpBusinessDataFlat), overwrite = TRUE)
+  rm(yelpBusinessDataFlat) # Save Space
+}
+
+
+if (!dbExistsTable(conDB, "yelpCheckInData") ) {
+  yelpCheckInDataFlat <- flatten(yelpCheckInData, recursive = TRUE)
+  dbWriteTable(conn = conDB, name = 'yelpCheckInData', value = as.data.frame(yelpCheckInDataFlat), overwrite = TRUE)
+  rm(yelpCheckInDataFlat) # Save Space
+}
+
+if (!dbExistsTable(conDB, "yelpReviewData") ) {
+  yelpReviewDataFlat <- flatten(yelpReviewData, recursive = TRUE)
+  dbWriteTable(conn = conDB, name = 'yelpReviewData', value = as.data.frame(yelpReviewDataFlat), overwrite = TRUE)
+  rm(yelpReviewDataFlat) # Save Space
+}
+
+if (!dbExistsTable(conDB, "yelpTipData") ) {
+  yelpTipDataFlat <- flatten(yelpTipData, recursive = TRUE)
+  dbWriteTable(conn = conDB, name = 'yelpTipData', value = as.data.frame(yelpTipDataFlat), overwrite = TRUE)
+  rm(yelpTipDataFlat) # Save Space
+}
+
+if (!dbExistsTable(conDB, "yelpUserData") ) {
+  yelpUserDataFlat <- flatten(yelpUserData, recursive = TRUE)
+  yelpUserDataFlat$friends <- sapply(yelpUserData$friends, toString)
+  yelpUserDataFlat$elite <- sapply(yelpUserData$elite, toString)
+  rm(yelpTipDataFlat) # Save Space
+  
+  dbWriteTable(conn = conDB, name = 'yelpUserData', value = as.data.frame(yelpUserDataFlat), overwrite = TRUE)
+}
+
+dbListTables(conDB)
+dbDisconnect(conDB)
+
+```
+
+## Methods and Data
+- Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
+
+## Results 
+- Describe what you found through your analysis of the data.
+
+## Discussion
+- Explain how you interpret the results of your analysis and what the implications are for your question/problem.
+
