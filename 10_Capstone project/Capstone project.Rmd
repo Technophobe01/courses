@@ -7,20 +7,20 @@ output:
     highlight: tango
     number_sections: yes
     theme: cerulean
-    toc: yes
+    toc: no
 ---
 
-```{r setOptions, echo=FALSE, echo=FALSE, message=FALSE, results='hide', cache=TRUE}
+```{r setOptions, echo=FALSE, message=FALSE, results='hide', cache=TRUE}
 require(knitr)
 opts_chunk$set(fig.width = 10, fig.height = 8)
 require(knitcitations)
 cleanbib()
 ```
 
-```{r Setup, echo=FALSE, results='hide'}
+```{r Setup, echo=FALSE, message=FALSE, results='hide'}
 setwd("~/Documents/Dropbox/dev/cousera/courses/10_Capstone project")
 
-requiredPackages <- c("devtools","dplyr","tidyr","data.table","ggplot2","ggvis","RMySQL", "jsonlite", "psych")
+requiredPackages <- c("devtools","dplyr","tidyr","data.table","ggplot2","ggvis","RMySQL", "jsonlite", "psych", "knitr")
 
 ipak <- function(pkg)
 {
@@ -33,21 +33,18 @@ ipak <- function(pkg)
 ipak(requiredPackages)
 ```
 
-# Title
-- Predictive Review by Location and Business Type
-
-## Introduction
-- A description of the question/problem and the rationale for studying it
+# Predictive Review by Location and Business Type
 
 The problem and question I wish to ask and answer is 
 
-_**"In what region of the Yelp Dataset Challenge dataset does the highest density of a particular form of restaurant occur and which region gives the best review to a particular form of restaurant in the context of a particular event such as Mothers Day, or Fathers Day"**_. Secondly, _**"Can we predict that restuarants of type X in region Y have a higher probability of a good review?"**_"
+- "In what region of the Yelp Dataset Challenge dataset does the highest density of a particular form of restaurant occur and which region gives the best review to a particular form of restaurant in the context of a particular event such as Mothers Day, or Fathers Day"_. Secondly, _**"Can we predict that restuarants of type X in region Y have a higher probability of a good review?"**_"
 
 The intent is to combine both location, and temporal data and natural language processing to determine if a correlation exists between location, type of restaurant and event. For example can we determine if the hypothesis _**"People in region X, have the highest density of Chinese restuarants, yet give the best reviews to Italian restaurants on Father's Day"**_ is true, false or non-answerable based on the data-set we are using?
 
 ## Data Import
 
-```{r Data_Download}
+```{r Data_Download, echo=FALSE, message=FALSE, cache=TRUE, results='hide'}
+
 dataDir         <- "./data"
 fileUrl         <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/yelp_dataset_challenge_academic_dataset.zip"
 filePath        <- file.path(dataDir)
@@ -70,7 +67,9 @@ if (!file.exists( file.path(dataDir,"yelp_dataset_challenge_academic_dataset")))
 }
 ```
 
-```{r Data_Import}
+
+```{r Data_Import, echo=FALSE, message=FALSE, cache=TRUE, results='hide'}
+
 # OK, now we have downloaded the data, we now need to import it into R and clean
 # it... We have five datasets:
 #  
@@ -151,7 +150,7 @@ if ( !exists("yelpUserData") ) {
 }
 ```
 
-```{r create_database}
+```{r create_database, echo=FALSE, message=FALSE, cache=TRUE, results='hide'}
 # We now have the data loaded... Next step is to move the data into a MySql 
 # database. This is good practice as we can then use dplyr to access and
 # manipulate the data without having to keep all the tables in memory...
@@ -233,28 +232,83 @@ dbListTables(conDB)
 dbDisconnect(conDB)
 
 ```
+## Exploratory Analysis
 
-``` {r InitialAnalysis}
-# Use src_mysql to connect to an existing mysql or mariadb database, and tbl to
-# connect to tables within that database. If you are running a local mysqlql
-# database, leave all parameters set as their defaults to connect. If you're
-# connecting to a remote database, ask your database administrator for the
-# values of these variables.
-# 
-# User name and password. Rather than supplying a username and password here,
-# it's better to save them in my.cnf, as described in MySQL. # In that case,
-# supply NULL to both user and password.
 
-conDB <- src_mysql(dbname = 'Capstone', user = NULL, password = NULL)
+The yelp dataset includes:
 
-# Select the yelpBusinessData$city data from the sql database...
-MyData <- as.data.frame(conDB %>% tbl("yelpBusinessData") %>% select(city))
-head(MyData,5)
-tail(MyData,5)
-# How many Unique Cities
-unique(MyData)
-dbDisconnect(conDB)
+- 1.6M reviews and 500K tips by 366K users for 61K businesses
+- 481K business attributes, e.g., hours, parking availability, ambience.
+- Social network of 366K users for a total of 2.9M social edges.
+- Aggregated check-ins over time for each of the 61K businesses
+
+The datset covers 10 cities...
+ 
+- U.K.: Edinburgh
+- Germany: Karlsruhe
+- Canada: Montreal and Waterloo
+- U.S.: Pittsburgh, Charlotte, Urbana-Champaign, Phoenix, Las Vegas, Madison
+
+Our goal here is to do an initial mapping of the geo data, nothing to complex our goals are to explore the data. We start with a macro view, what cities do we have in the data set? From that we can then start to look at the geographic data...
+ 
+```{r InitialAnalysis, echo=FALSE, message=FALSE, cache = TRUE, results = 'hide'}
+
+require("maps")
+require("ggmap")
+require("psych")
+require("maptools")
+set.seed(777)
+
+# The Yelp Dataset describes 10 Cities, is that true?
+# Lets partition the yelp data set into 10 clusters and then map those cluster to location
+
+geo.cluster <- kmeans(yelpBusinessData[,c('longitude','latitude')], 10)
+geo.cluster$centers
+
+# We can see that the goe.clusters result skews to the US data due to relative size of cluster...
 ```
+
+```{r Mapping, echo = FALSE, message = FALSE, cache = TRUE, fig.width=12, fig.height=8, results = 'hide'}
+
+cities <- c('Edinburgh, UK', 
+          'Karlsruhe, Germany', 
+          'Montreal, Canada', 'Waterloo, Canada', 
+          'Pittsburgh, PA', 'Charlotte, NC', 'Urbana-Champaign, IL', 'Phoenix, AZ', 'Las Vegas, NV', 'Madison, WI')
+
+city.centres <- geocode(cities, source = "google")
+geo.cluster <- kmeans(yelpBusinessData[,c('longitude','latitude')],city.centres)
+# summary(geo.cluster)
+
+# Now we can map these clusters to a map of the world to get a sense of the 
+# data... Here what we do os map the cluster centers to the map and scale the 
+# point size to the cluster size of the kmeans clusters...
+# 
+# Note the relative size of the clusters - Phoenix data set is considerably
+# larger than the UK and German data sets...
+# 
+# 
+gp <- ggplot(data.frame(geo.cluster$centers), aes(longitude, latitude, color = cities))
+gp <- gp + borders("world", background = "lightblue", fill = "white", col = "cornflowerblue") 
+gp <- gp + geom_point(aes(size = geo.cluster$size))
+gp <- gp + geom_text(aes(city.centres$lon, city.centres$lat, label = cities), 
+                     size = 3, hjust = -0.2, vjust = .3, color = "black")
+gp
+rm(gp)
+
+require(dplyr)
+# convert to numeric
+clusterAnalysis <- data.frame(cbind(City = cities, Cluster = geo.cluster$size))
+clusterAnalysis$Cluster <- as.numeric(as.character(clusterAnalysis$Cluster))
+
+```
+
+What we find is that the size of the relative geospatial datasets sku's the initial result. There is not an even distribution of data by location. The map displayed in the figure above depicts and addresses this problem, the table below shows the cluster sizes. We obtain the data by pulling the geocodes for the cities referenced and use these codes to create the cluster buckets. Note that if we sum the buckets we get: `r format(sum(clusterAnalysis$Cluster), scientific=FALSE)` , which aligns with the sampe row size of `yelpBusinessData`
+
+```{r, echo = FALSE, results='asis'}
+require(knitr)
+kable(arrange(clusterAnalysis,Cluster))
+```
+
 ## Methods and Data
 - Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
 
