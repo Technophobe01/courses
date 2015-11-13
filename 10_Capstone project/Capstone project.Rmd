@@ -20,7 +20,7 @@ cleanbib()
 ```{r Setup, echo=FALSE, message=FALSE, results='hide'}
 setwd("~/Documents/Dropbox/dev/cousera/courses/10_Capstone project")
 
-requiredPackages <- c("devtools","dplyr","tidyr","data.table","ggplot2","ggvis","RMySQL", "jsonlite", "psych", "knitr")
+requiredPackages <- c("devtools","dplyr","tidyr","data.table","ggplot2","ggvis","RMySQL", "jsonlite", "psych", "plyr", "knitr")
 
 ipak <- function(pkg)
 {
@@ -287,7 +287,8 @@ geo.cluster <- kmeans(yelpBusinessData[,c('longitude','latitude')],city.centres)
 # larger than the UK and German data sets...
 # 
 # 
-gp <- ggplot(data.frame(geo.cluster$centers), aes(longitude, latitude, color = cities))
+gp <- ggplot(data.frame(geo.cluster$centers), 
+             aes(longitude, latitude, color = cities))
 gp <- gp + borders("world", background = "lightblue", fill = "white", col = "cornflowerblue") 
 gp <- gp + geom_point(aes(size = geo.cluster$size))
 gp <- gp + geom_text(aes(city.centres$lon, city.centres$lat, label = cities), 
@@ -308,6 +309,60 @@ What we find is that the size of the relative geospatial datasets sku's the init
 require(knitr)
 kable(arrange(clusterAnalysis,Cluster))
 ```
+
+Now we have a sense of the data clusters and their sizes, lets take a look at the next component of the proposed analysis.
+
+- In what region of the Yelp Challenge dataset do the highest priced restuarants occcur?
+- In what region of the Yelp Challenge dataset does the highest density of a particular form of restaurant occur?
+- Which region gives the best review to a particular form of restaurant?
+
+for the first question the intent is to investigate the types of restuarant by cluster, and then prioratise them by cluster. We can then look at the type of restuarant as a % of restuarants by cluster to determine popularity aginst rating.
+
+For example, we can create a subset for Phoenix and create a cluster map that examines the price denisity of restuarants. Lookign at the data we see that there is a cluster of expensive restaurants downtown. Looking at the data we see:
+
+```{r, echo = FALSE, message = FALSE, error = FALSE}
+require(knitr)
+require(ggmap)
+require(dplyr)
+require(pander)
+
+map <- get_map(location = 'Phoenix, AZ', zoom = 10, maptype = "roadmap")
+yelpBusinessData$city <- as.factor(yelpBusinessData$city)
+yelpBusinessData.PA <- yelpBusinessData[which(yelpBusinessData$city == "Phoenix"),]
+# Only restaurants (as in category)
+yelpBusinessData.PA.rest <- yelpBusinessData.PA[which(grepl("Restaurants", yelpBusinessData.PA$categories)),]
+
+kable( describe(yelpBusinessData.PA.rest$attributes$`Price Range`), digits = 2 )
+pander(count( yelpBusinessData.PA.rest$attributes$`Price Range` ))
+
+```
+
+```{r PheonixPriceDensity, echo = FALSE, message = FALSE, error = FALSE, warning = FALSE}
+
+mP <- ggmap(map, extent = "device", legend = "topright")
+mP <- mP + geom_point( data = yelpBusinessData.PA.rest,
+                      aes( x = yelpBusinessData.PA.rest$longitude,
+                           y = yelpBusinessData.PA.rest$latitude,
+                           color = yelpBusinessData.PA.rest$attributes$`Price Range`),
+                      size =  yelpBusinessData.PA.rest$attributes$`Price Range`,
+                      alpha = 0.5 )
+
+# Set the Legend to be a continous colour bar... 
+mP <- mP + scale_colour_continuous(low = "blue", 
+                                   high = "red", 
+                                   space = "Lab", 
+                                   guide = "colorbar", 
+                                   name = "Price Range")
+mP
+
+rm(mP)
+
+```
+
+OK, where are those four very expensive restaurants?...
+
+
+
 
 ## Methods and Data
 - Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
