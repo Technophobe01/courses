@@ -103,8 +103,9 @@ if ( !exists("yelpBusinessData") )
     # i.e. yelpBusinessData$attributes.Good.for.kids
     # 
     # This fixes the issue by renaming the first column...
-    colnames(yelpBusinessData$attributes)[7] <- "Good_For_Kids"
+    colnames(yelpBusinessData$attributes)[3] <- "Accepts_Credit_Cards"
     colnames(yelpBusinessData$attributes)[6] <- "Price_Range"
+    colnames(yelpBusinessData$attributes)[7] <- "Good_For_Kids"
     saveRDS( yelpBusinessData, file.path(dataDir, "yelpBusinessData.rds"))
   }
 }
@@ -199,7 +200,7 @@ if (!dbExistsTable(conDB, "yelpBusinessData") ) {
   yelpBusinessDataFlat <- flatten(yelpBusinessData, recursive = TRUE)
   yelpBusinessDataFlat$categories <- sapply(yelpBusinessDataFlat$categories, toString)
   yelpBusinessDataFlat$neighborhoods <- sapply(yelpBusinessDataFlat$neighborhoods, toString)
-  yelpBusinessDataFlat$`attributes.Accepts Credit Cards` <- sapply(yelpBusinessDataFlat$`attributes.Accepts Credit Cards`, toString)
+  yelpBusinessDataFlat$attributes.Accepts_Credit_Cards <- sapply(yelpBusinessDataFlat$attributes.Accepts_Credit_Cards, toString)
   dbWriteTable(conn = conDB, name = 'yelpBusinessData', value = as.data.frame(yelpBusinessDataFlat), overwrite = TRUE)
   rm(yelpBusinessDataFlat) # Save Space
 }
@@ -257,8 +258,9 @@ Our goal here is to do an initial mapping of the geo data, nothing to complex ou
  
 ```{r InitialAnalysis, cache = TRUE}
 
-# Flatten Data
+# Flatten Data File - I do not like to do this but it does make dplyr indexing easier...
 yelpBusinessData <- flatten(yelpBusinessData, recursive = TRUE)
+yelpReviewData <- flatten(yelpReviewData, recursive = TRUE)
 
 # The Yelp Dataset describes 10 Cities, is that true?
 # Lets partition the yelp data set into 10 clusters and then map those cluster to location
@@ -435,10 +437,24 @@ Note that in Las Vegas the median star rating is: **`r median(lasVegasPrice$star
 
 ### Restaurant Density by Type?
 
-Ok, so we have observed the star ratings and price range interaction. What of restaurant reviews? What types of restuarant exist, and which restuarants get the best reviews?
+Ok, so we have observed the star ratings and price range interaction. What of restaurant reviews? What types of restaurant exist, and which restaurants get the best reviews? The [Yelp developer documentation][1] is invaluable in this case as it contains a breakdown of the [category types][2] of restaurant listed by yelp. There are rather alot...
 
+```{r restaurantReview}
 
+# Create List of Restaurants...
+lasVegasRestaurants <- yelpBusinessData %>% 
+  filter( grepl("Las Vegas", city ) ) %>%
+  filter(grepl("Restaurants", categories)) %>%
+  filter(open == TRUE)
 
+yelpBusinessData$city
+
+# user_ids <- yelpReviewData %>% filter( business_id %in% lasVegasRestaurants$business_id )
+# str(user_ids)
+# userDetails <- yelpUserData %>% filter(user_id %in% user_ids$user_id)
+# userDetails$user_id
+
+```
 
 ## Methods and Data
 - Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
@@ -449,3 +465,9 @@ Ok, so we have observed the star ratings and price range interaction. What of re
 ## Discussion
 - Explain how you interpret the results of your analysis and what the implications are for your question/problem.
 
+# References
+
+- [Yelp developer documentation][1]
+
+[1]: https://www.yelp.com/developers/documentation/
+[2]: https://www.yelp.com/developers/documentation/v2/all_category_list
