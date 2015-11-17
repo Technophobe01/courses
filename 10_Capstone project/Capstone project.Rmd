@@ -10,9 +10,10 @@ output:
     toc: no
 ---
 
-```{r setOptions, echo=FALSE, message=FALSE, results='hide', cache=TRUE}
+```{r setOptions, echo = FALSE, message = FALSE, error = FALSE, warning = FALSE, results = 'hide'}
+# Here we set the default knitr options and then override as the point of use...
 require(knitr)
-opts_chunk$set(fig.width = 10, fig.height = 8)
+opts_chunk$set(echo = FALSE, message = FALSE, error = FALSE, warning = FALSE, results = 'hide', fig.width = 16, fig.height = 8)
 require(knitcitations)
 cleanbib()
 ```
@@ -20,7 +21,9 @@ cleanbib()
 ```{r Setup, echo=FALSE, message=FALSE, results='hide'}
 setwd("~/Documents/Dropbox/dev/cousera/courses/10_Capstone project")
 
-requiredPackages <- c("devtools","dplyr","tidyr","data.table","ggplot2","ggvis","RMySQL", "jsonlite", "psych", "plyr", "knitr")
+requiredPackages <- c("devtools","dplyr","tidyr","data.table","ggplot2","ggvis",
+                      "RMySQL", "jsonlite", "psych", "plyr", "knitr", "pander",
+                      "maps", "mapproj", "maptools", "ggmap")
 
 ipak <- function(pkg)
 {
@@ -43,7 +46,7 @@ The intent is to combine both location, and temporal data and natural language p
 
 ## Data Import
 
-```{r Data_Download, echo=FALSE, message=FALSE, cache=TRUE, results='hide'}
+```{r Data_Download }
 
 dataDir         <- "./data"
 fileUrl         <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/yelp_dataset_challenge_academic_dataset.zip"
@@ -68,7 +71,7 @@ if (!file.exists( file.path(dataDir,"yelp_dataset_challenge_academic_dataset")))
 ```
 
 
-```{r Data_Import, echo=FALSE, message=FALSE, cache=TRUE, results='hide'}
+```{r Data_Import, cache=TRUE }
 
 # OK, now we have downloaded the data, we now need to import it into R and clean
 # it... We have five datasets:
@@ -101,6 +104,7 @@ if ( !exists("yelpBusinessData") )
     # 
     # This fixes the issue by renaming the first column...
     colnames(yelpBusinessData$attributes)[7] <- "Good_For_Kids"
+    colnames(yelpBusinessData$attributes)[6] <- "Price_Range"
     saveRDS( yelpBusinessData, file.path(dataDir, "yelpBusinessData.rds"))
   }
 }
@@ -150,7 +154,7 @@ if ( !exists("yelpUserData") ) {
 }
 ```
 
-```{r create_database, echo=FALSE, message=FALSE, cache=TRUE, results='hide'}
+```{r create_database, cache=TRUE}
 # We now have the data loaded... Next step is to move the data into a MySql 
 # database. This is good practice as we can then use dplyr to access and
 # manipulate the data without having to keep all the tables in memory...
@@ -251,13 +255,10 @@ The datset covers 10 cities...
 
 Our goal here is to do an initial mapping of the geo data, nothing to complex our goals are to explore the data. We start with a macro view, what cities do we have in the data set? From that we can then start to look at the geographic data...
  
-```{r InitialAnalysis, echo=FALSE, message=FALSE, cache = TRUE, results = 'hide'}
+```{r InitialAnalysis, cache = TRUE}
 
-require("maps")
-require("ggmap")
-require("psych")
-require("maptools")
-set.seed(777)
+# Flatten Data
+yelpBusinessData <- flatten(yelpBusinessData, recursive = TRUE)
 
 # The Yelp Dataset describes 10 Cities, is that true?
 # Lets partition the yelp data set into 10 clusters and then map those cluster to location
@@ -268,7 +269,7 @@ geo.cluster$centers
 # We can see that the goe.clusters result skews to the US data due to relative size of cluster...
 ```
 
-```{r Mapping, echo = FALSE, message = FALSE, cache = TRUE, fig.width=12, fig.height=8, results = 'hide'}
+```{r Mapping, cache = TRUE}
 
 cities <- c('Edinburgh, UK', 
           'Karlsruhe, Germany', 
@@ -292,7 +293,8 @@ gp <- ggplot(data.frame(geo.cluster$centers),
 gp <- gp + borders("world", background = "lightblue", fill = "white", col = "cornflowerblue") 
 gp <- gp + geom_point(aes(size = geo.cluster$size))
 gp <- gp + geom_text(aes(city.centres$lon, city.centres$lat, label = cities), 
-                     size = 3, hjust = -0.2, vjust = .3, color = "black")
+                     size = 3, hjust = -0.2, vjust = .3, color = "black", name = "Cities \n")
+gp <- gp + scale_size_area(name = "Cluster Size \n")
 gp
 rm(gp)
 
@@ -305,9 +307,10 @@ clusterAnalysis$Cluster <- as.numeric(as.character(clusterAnalysis$Cluster))
 
 What we find is that the size of the relative geospatial datasets sku's the initial result. There is not an even distribution of data by location. The map displayed in the figure above depicts and addresses this problem, the table below shows the cluster sizes. We obtain the data by pulling the geocodes for the cities referenced and use these codes to create the cluster buckets. Note that if we sum the buckets we get: `r format(sum(clusterAnalysis$Cluster), scientific=FALSE)` , which aligns with the sampe row size of `yelpBusinessData`
 
-```{r, echo = FALSE, results='asis'}
-require(knitr)
+```{r, results='asis'}
+
 kable(arrange(clusterAnalysis,Cluster))
+
 ```
 
 Now we have a sense of the data clusters and their sizes, lets take a look at the next component of the proposed analysis.
@@ -320,31 +323,33 @@ for the first question the intent is to investigate the types of restuarant by c
 
 For example, we can create a subset for Phoenix and create a cluster map that examines the price denisity of restuarants. Lookign at the data we see that there is a cluster of expensive restaurants downtown. Looking at the data we see:
 
-```{r, echo = FALSE, message = FALSE, error = FALSE}
-require(knitr)
-require(ggmap)
-require(dplyr)
-require(pander)
-
-map <- get_map(location = 'Phoenix, AZ', zoom = 10, maptype = "roadmap")
+```{r mapSetup}
+map <- get_map(location = 'Las Vegas, NV', zoom = 10, maptype = "roadmap")
 yelpBusinessData$city <- as.factor(yelpBusinessData$city)
-yelpBusinessData.PA <- yelpBusinessData[which(yelpBusinessData$city == "Phoenix"),]
+yelpBusinessData.NV <- yelpBusinessData[which(yelpBusinessData$city == "Las Vegas"),]
 # Only restaurants (as in category)
-yelpBusinessData.PA.rest <- yelpBusinessData.PA[which(grepl("Restaurants", yelpBusinessData.PA$categories)),]
-
-kable( describe(yelpBusinessData.PA.rest$attributes$`Price Range`), digits = 2 )
-pander(count( yelpBusinessData.PA.rest$attributes$`Price Range` ))
-
+yelpBusinessData.NV.rest <- yelpBusinessData.NV[which(grepl("Restaurants", yelpBusinessData.NV$categories)),]
 ```
 
-```{r PheonixPriceDensity, echo = FALSE, message = FALSE, error = FALSE, warning = FALSE}
+```{r describeData, results='asis'}
+kable(describe( yelpBusinessData.NV.rest$attributes.Price_Range))
+pander(count( yelpBusinessData.NV.rest$attributes.Price_Range ))
+
+```
+Firstly, lets just look at all the Las Vegas restaurants that are open and map out their price range...
+
+```{r lasVegasPriceDensity}
+lasVegasPrice <- yelpBusinessData %>% 
+  filter(city == "Las Vegas") %>%
+  filter(grepl("Restaurants", categories)) %>%
+  filter(open == TRUE)
 
 mP <- ggmap(map, extent = "device", legend = "topright")
-mP <- mP + geom_point( data = yelpBusinessData.PA.rest,
-                      aes( x = yelpBusinessData.PA.rest$longitude,
-                           y = yelpBusinessData.PA.rest$latitude,
-                           color = yelpBusinessData.PA.rest$attributes$`Price Range`),
-                      size =  yelpBusinessData.PA.rest$attributes$`Price Range`,
+mP <- mP + geom_point( data = lasVegasPrice,
+                      aes( x = lasVegasPrice$longitude,
+                           y = lasVegasPrice$latitude,
+                           color = lasVegasPrice$attributes.Price_Range,
+                           size =  lasVegasPrice$attributes.Price_Range),
                       alpha = 0.5 )
 
 # Set the Legend to be a continous colour bar... 
@@ -352,14 +357,85 @@ mP <- mP + scale_colour_continuous(low = "blue",
                                    high = "red", 
                                    space = "Lab", 
                                    guide = "colorbar", 
-                                   name = "Price Range")
+                                   name = "Price Range \n")
+mP <- mP + scale_size_area(name = "Price Range \n")
 mP
 
 rm(mP)
 
 ```
 
-OK, where are those four very expensive restaurants?...
+OK, where are the expensive restaurants?... Lets look at the restaurants with a price range of between 3 and 4...
+
+```{r lasVegasExpDensity }
+
+lasVegasExpDensity <- yelpBusinessData %>% 
+  filter(city == "Las Vegas") %>%
+  filter(grepl("Restaurants", categories)) %>%
+  filter(open == TRUE) %>%
+  filter( (attributes.Price_Range == 3 | attributes.Price_Range == 4) )
+
+# lasVegasExpDensity <- lasVegasExpDensity[which(lasVegasExpDensity$attributes$Price_Range == 3 |
+#     lasVegasExpDensity$attributes$Price_Range == 4),]
+
+mP <- ggmap(map, extent = "device", legend = "topright")
+mP <- mP + geom_point( data = lasVegasExpDensity,
+                      aes( x = lasVegasExpDensity$longitude,
+                           y = lasVegasExpDensity$latitude,
+                           color = lasVegasExpDensity$attributes.Price_Range,
+                           size =  lasVegasExpDensity$attributes.Price_Range),
+                      alpha = 0.5 )
+
+# Set the Legend to be a continous colour bar... 
+mP <- mP + scale_colour_continuous(low = "blue", 
+                                   high = "red", 
+                                   space = "Lab", 
+                                   guide = "colorbar", 
+                                   name = "Price Range\n")
+
+mP <- mP + scale_size_area(name = "Price Range \n")
+mP
+```
+
+Hmmm, now lets look at restaurants with good star ratings [3 through 4] and a price range of 3 through 4... 
+
+```{r lasVegasDensityStarByPrice }
+Exp <- yelpBusinessData %>% 
+  filter(city == "Las Vegas") %>%
+  filter(grepl("Restaurants", categories)) %>%
+  filter(open == TRUE) %>% 
+  filter( stars > 3 ) %>%
+  filter( (attributes.Price_Range == 3 | attributes.Price_Range == 4) )
+
+#  filter( (attributes[[6]][] == 3 | attributes[[6]][] == 4) )
+# 
+# Exp <- yelpBusinessData.PA.rest[which(yelpBusinessData.PA.rest$attributes$Price_Range == 3 |
+#     yelpBusinessData.PA.rest$attributes$Price_Range == 4),]
+
+mP <- ggmap(map, extent = "device", legend = "topright")
+mP <- mP + geom_point( data = Exp,
+                      aes( x = Exp$longitude,
+                           y = Exp$latitude,
+                           color = Exp$attributes.Price_Range,
+                           size =  Exp$stars),
+                      alpha = 0.5 )
+
+# Set the Legend to be a continous colour bar... 
+mP <- mP + scale_colour_continuous(low = "blue", 
+                                   high = "red", 
+                                   space = "Lab", 
+                                   guide = "colorbar", 
+                                   name = "Price Range\n")
+
+mP <- mP + scale_size_area(name = "Star Range \n")
+mP
+```
+
+Note that in Las Vegas the median star rating is: **`r median(lasVegasPrice$stars, na.rm = TRUE)`** and the median Price range is **`r median(lasVegasPrice$attributes.Price_Range, na.rm = TRUE)`**. Hence, we see that when we focus interest on higher priced restaurant we see a slight sku to the the center of town. 
+
+### Restaurant Density by Type?
+
+Ok, so we have observed the star ratings and price range interaction. What of restaurant reviews? What types of restuarant exist, and which restuarants get the best reviews?
 
 
 
