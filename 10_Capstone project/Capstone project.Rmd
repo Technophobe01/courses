@@ -23,7 +23,7 @@ setwd("~/Documents/Dropbox/dev/cousera/courses/10_Capstone project")
 
 requiredPackages <- c("devtools","dplyr","tidyr","data.table","ggplot2","ggvis",
                       "RMySQL", "jsonlite", "psych", "plyr", "knitr", "pander",
-                      "maps", "mapproj", "maptools", "ggmap")
+                      "maps", "mapproj", "maptools", "ggmap", "ggthemes")
 
 ipak <- function(pkg)
 {
@@ -68,6 +68,15 @@ if (!file.exists( file.path(dataDir,"yelp_dataset_challenge_academic_dataset")))
   unzip(temp, exdir = dataDir)
   unlink(temp)
 }
+
+fileUrlcat      <- "https://www.yelp.com/developers/documentation/v2/all_category_list/categories.json"
+if (!file.exists( file.path(dataDir,"categories.json"))) {
+  download.file(fileUrlcat, 
+                file.path(dataDir,"categories.json"),
+                mode = "wb", method = "curl")
+}
+
+
 ```
 
 
@@ -89,6 +98,9 @@ if ( !exists("yelpBusinessData") )
 {
   if (file.exists( file.path(dataDir,"yelpBusinessData.rds"))) {
     yelpBusinessData <- readRDS(file.path(dataDir,"yelpBusinessData.rds"))
+    colnames(yelpBusinessData$attributes)[3] <- "Accepts_Credit_Cards"
+    colnames(yelpBusinessData$attributes)[6] <- "Price_Range"
+    colnames(yelpBusinessData$attributes)[7] <- "Good_For_Kids"
   } else {
     yelpBusinessDataFilePath <- file.path(dataDir, 
                                           "yelp_academic_dataset_business.json")
@@ -153,6 +165,30 @@ if ( !exists("yelpUserData") ) {
     saveRDS( yelpUserData, file.path(dataDir, "yelpUserData.rds"))
   }
 }
+
+# We want to create a new dataframe that is organised by cuisine type for future
+# reference and use... We need this data to filter restaurant and business types
+# later. I felt it better to include it in the data import (for packaging) and
+# convenience.
+# 
+# Conveniently provided via the Yelp API's...
+# 
+
+dataDir <- "./data/yelp_dataset_challenge_academic_dataset"
+
+if (!exists("yelpBusinessCategories"))
+{
+  if (file.exists(file.path(dataDir,"yelpBusinessCategories.rds"))) 
+    {
+        yelpBusinessCategories <- readRDS(file.path(dataDir,"yelpBusinessCategories.rds"))
+    } else {
+      yelpBusinessDataFilePath <- file.path(dataDir,"categories.json")
+      yelpBusinessCategories <- fromJSON(yelpBusinessDataFilePath, flatten = FALSE)
+      str(yelpBusinessCategories, max_level = 1)
+      saveRDS( yelpBusinessCategories, file.path(dataDir, "yelpBusinessCategories.rds"))
+    }
+}
+
 ```
 
 ```{r create_database, cache=TRUE}
@@ -256,7 +292,7 @@ The datset covers 10 cities...
 
 Our goal here is to do an initial mapping of the geo data, nothing to complex our goals are to explore the data. We start with a macro view, what cities do we have in the data set? From that we can then start to look at the geographic data...
  
-```{r InitialAnalysis, cache = TRUE}
+```{r InitialAnalysis }
 
 # Flatten Data File - I do not like to do this but it does make dplyr indexing easier...
 yelpBusinessData <- flatten(yelpBusinessData, recursive = TRUE)
@@ -326,14 +362,17 @@ for the first question the intent is to investigate the types of restuarant by c
 For example, we can create a subset for Phoenix and create a cluster map that examines the price denisity of restuarants. Lookign at the data we see that there is a cluster of expensive restaurants downtown. Looking at the data we see:
 
 ```{r mapSetup}
+
 map <- get_map(location = 'Las Vegas, NV', zoom = 10, maptype = "roadmap")
 yelpBusinessData$city <- as.factor(yelpBusinessData$city)
 yelpBusinessData.NV <- yelpBusinessData[which(yelpBusinessData$city == "Las Vegas"),]
 # Only restaurants (as in category)
 yelpBusinessData.NV.rest <- yelpBusinessData.NV[which(grepl("Restaurants", yelpBusinessData.NV$categories)),]
+
 ```
 
 ```{r describeData, results='asis'}
+
 kable(describe( yelpBusinessData.NV.rest$attributes.Price_Range))
 pander(count( yelpBusinessData.NV.rest$attributes.Price_Range ))
 
@@ -361,9 +400,8 @@ mP <- mP + scale_colour_continuous(low = "blue",
                                    guide = "colorbar", 
                                    name = "Price Range \n")
 mP <- mP + scale_size_area(name = "Price Range \n")
-mP
-
-rm(mP)
+mP <- mP + ggtitle("Plot 1: Price Density - Las Vegas\n")
+mP1 <- mP # Assign to Panel4
 
 ```
 
@@ -396,13 +434,15 @@ mP <- mP + scale_colour_continuous(low = "blue",
                                    name = "Price Range\n")
 
 mP <- mP + scale_size_area(name = "Price Range \n")
-mP
+mP <- mP + ggtitle("Plot 2: Price Range [3 to 4] - Las Vegas\n")
+mP2 <- mP # Assign to Panel2
+
 ```
 
 Hmmm, now lets look at restaurants with good star ratings [3 through 4] and a price range of 3 through 4... 
 
 ```{r lasVegasDensityStarByPrice }
-Exp <- yelpBusinessData %>% 
+DensityStarByPrice <- yelpBusinessData %>% 
   filter(city == "Las Vegas") %>%
   filter(grepl("Restaurants", categories)) %>%
   filter(open == TRUE) %>% 
@@ -415,11 +455,11 @@ Exp <- yelpBusinessData %>%
 #     yelpBusinessData.PA.rest$attributes$Price_Range == 4),]
 
 mP <- ggmap(map, extent = "device", legend = "topright")
-mP <- mP + geom_point( data = Exp,
-                      aes( x = Exp$longitude,
-                           y = Exp$latitude,
-                           color = Exp$attributes.Price_Range,
-                           size =  Exp$stars),
+mP <- mP + geom_point( data = DensityStarByPrice,
+                      aes( x = DensityStarByPrice$longitude,
+                           y = DensityStarByPrice$latitude,
+                           color = DensityStarByPrice$attributes.Price_Range,
+                           size =  DensityStarByPrice$stars),
                       alpha = 0.5 )
 
 # Set the Legend to be a continous colour bar... 
@@ -430,29 +470,221 @@ mP <- mP + scale_colour_continuous(low = "blue",
                                    name = "Price Range\n")
 
 mP <- mP + scale_size_area(name = "Star Range \n")
-mP
+mP <- mP + ggtitle("Plot 3: Star Range [3 to 4] - Las Vegas\n")
+mP3 <- mP # Assign to Panel3
+
 ```
 
-Note that in Las Vegas the median star rating is: **`r median(lasVegasPrice$stars, na.rm = TRUE)`** and the median Price range is **`r median(lasVegasPrice$attributes.Price_Range, na.rm = TRUE)`**. Hence, we see that when we focus interest on higher priced restaurant we see a slight sku to the the center of town. 
+```{r lasVegasDensityReviewCountByPrice }
+
+ReviewCountByPrice <- yelpBusinessData %>% 
+  filter(city == "Las Vegas") %>%
+  filter(grepl("Restaurants", categories)) %>%
+  filter(open == TRUE) 
+
+```
+
+Finally, lets compare price range to review count... Note what is interesting here is that the median review count is: **`r median(ReviewCountByPrice$review_count)`**, whilst the mean is: **`r format(mean(ReviewCountByPrice$review_count), scientific=FALSE, digits=5)`**, the max is **`r format(max(ReviewCountByPrice$review_count), scientific=FALSE, digits=5)`**
+
+```{r lasVegasDensityReviewCountByPrice2 }
+
+#  filter( (attributes[[6]][] == 3 | attributes[[6]][] == 4) )
+# 
+# Exp <- yelpBusinessData.PA.rest[which(yelpBusinessData.PA.rest$attributes$Price_Range == 3 |
+#     yelpBusinessData.PA.rest$attributes$Price_Range == 4),]
+
+mP <- ggmap(map, extent = "device", legend = "topright")
+mP <- mP + geom_point( data = ReviewCountByPrice,
+                       aes( x = ReviewCountByPrice$longitude,
+                            y = ReviewCountByPrice$latitude,
+                            color = ReviewCountByPrice$attributes.Price_Range,
+                            size =  ReviewCountByPrice$review_count),
+                       alpha = 0.5 )
+
+# Set the Legend to be a continous colour bar... 
+mP <- mP + scale_colour_continuous(low = "blue", 
+                                   high = "red", 
+                                   space = "Lab", 
+                                   guide = "colorbar", 
+                                   name = "Price Range\n")
+
+mP <- mP + scale_size_area(name = "Review Count \n")
+mP <- mP + ggtitle("Plot 4: Price by Review - Las Vegas\n")
+mP4 <- mP # Assign to Panel4
+```
+
+```{r createPlotTile}
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+multiplot(mP1, mP2, mP3, mP4, cols=2)
+
+```
+
+
+Note that in Las Vegas the median star rating is: **`r median(lasVegasPrice$stars, na.rm = TRUE)`** and the median Price range is **`r median(lasVegasPrice$attributes.Price_Range, na.rm = TRUE)`**. Hence, we see that when we focus interest on higher priced restaurant we see a sku to the the center of town. Specifically, the Las Vegas party strip.
 
 ### Restaurant Density by Type?
 
-Ok, so we have observed the star ratings and price range interaction. What of restaurant reviews? What types of restaurant exist, and which restaurants get the best reviews? The [Yelp developer documentation][1] is invaluable in this case as it contains a breakdown of the [category types][2] of restaurant listed by yelp. There are rather alot...
+Ok, so we have observed the star ratings and price range interaction. What types of restaurant exist, and which restaurants get the best reviews? The [Yelp developer documentation][1] is invaluable in this case as it contains a breakdown of the [category types][2] of restaurant listed by yelp. We use the yelp categories dat to extract the restaurant data for las vegas for exploration...
 
-```{r restaurantReview}
+```{r restaurantReview }
 
 # Create List of Restaurants...
 lasVegasRestaurants <- yelpBusinessData %>% 
   filter( grepl("Las Vegas", city ) ) %>%
-  filter(grepl("Restaurants", categories)) %>%
-  filter(open == TRUE)
+  filter( grepl("Restaurants", categories)) %>%
+  filter( open == TRUE)
 
-yelpBusinessData$city
+# Let's capture the indexing
+# yelpBusinessData.NV.rest$[[4]][[2]][[2]]
+# 
+# [[4]] == Categories
+# [[1]] == First Business
+# [[1]] == First item in catagories list
+# 
+# for (n in 1:length(lasVegasRestaurants[[4]]))
+# {
+#     cat("List:", lasVegasRestaurants[[4]][[n]], "\n")
+#     for (i in 1:length(lasVegasRestaurants[[4]][[n]][]) )
+#     {
+#       cat("List2:", lasVegasRestaurants[[4]][[n]][[i]], "\n")
+#       # If the filter matches return the business_id
+#     }
+# }
 
-# user_ids <- yelpReviewData %>% filter( business_id %in% lasVegasRestaurants$business_id )
-# str(user_ids)
-# userDetails <- yelpUserData %>% filter(user_id %in% user_ids$user_id)
-# userDetails$user_id
+# Ok, lets use the Yelp API category data to create a subset list of restaurant types...
+restaurantFilter <- yelpBusinessCategories %>% 
+  filter( parents == "restaurants") %>% 
+  select(-country_whitelist, -country_blacklist) # Strip the whitelist / blacklist by country data
+
+restaurantFilter$title <- gsub("\\(","\\\\\\(",restaurantFilter$title)
+restaurantFilter$title <- gsub("\\)","\\\\\\)",restaurantFilter$title)
+restaurantFilter$title <- gsub("\\&","\\\\\\&",restaurantFilter$title)
+
+# Ok, this is a bit tricky... lasVegasRestaurants$categories is a list inside a 
+# dataframe. We need to compare each type of restaurantFilter$title to each item
+# in the lasVegasRestaurants$categories list...
+# 
+# The solution is to use a function that takes the search list and applies a
+# noname function to the list. If a match is found we return the business_id of
+# the company... We use the restaurantFilter$title as the search string... 
+# 
+cuisinebyBusiness <-
+  lapply(restaurantFilter$title, function(cuisineCategoryList)
+    lasVegasRestaurants[grepl(cuisineCategoryList, lasVegasRestaurants$categories),"business_id"])
+
+restaurantFilter$title <- gsub("\\\\\\(","\\(",restaurantFilter$title)
+restaurantFilter$title <- gsub("\\\\\\)","\\)",restaurantFilter$title)
+restaurantFilter$title <- gsub("\\\\\\&","\\&",restaurantFilter$title)
+
+# Now we can a create list that maps the business's to each cuisine type as
+# defined by restaurantFilter$title...
+# 
+businessByCuisine <-
+  mapply(
+    function(cuisine,business_list)
+      list(cuisine = cuisine, business_id = business_list), restaurantFilter$title, cuisinebyBusiness, SIMPLIFY = FALSE)
+
+# further we can create a dataframe that lists cuisine type (Column Name) against business-id's (rows)
+temp <- lapply(businessByCuisine, `[[`, "business_id")
+cuisinebyBusinessCount <- 
+  data.frame(lapply(temp, `length<-`, max(lengths(temp))))
+
+# This allows us to count up the number of restaurants in Las Vegas by restaurant type...
+
+cuisineBusinessCount <- 
+  data.frame(
+      # Insert a Column with each staurant name
+      CuisineType = restaurantFilter$title,
+      # Insert a column with the review count of each cuisineType...
+      BusinessCount = apply(cuisinebyBusinessCount, 2, function(x) length(which(!is.na(x))))
+    ) %>% arrange(desc(BusinessCount))
+  
+# OK, now we want to determine the most popular restaurant cuisine 'type' by review feedback...
+
+# cuisineReviewCount <- cuisinebyBusinessCount %>% 
+```
+
+
+```{r summaryData}
+
+gp <- ggplot(dat = head(cuisineBusinessCount, n = 10), 
+             aes(x = reorder(CuisineType, BusinessCount), 
+             y = BusinessCount))
+gp <- gp + theme_wsj()
+gp <- gp + geom_bar(stat = "identity")
+gp <- gp + geom_text(aes(label = BusinessCount), vjust = 5, color = "white")
+gp <- gp + theme(axis.text = element_text(size = 12),
+                 axis.text.x = element_text(angle = -55, hjust = .5),
+                 axis.text.y = element_text(angle = -55, hjust = .5),
+                 axis.title.y = element_text(angle = 90),
+                 axis.title = element_text(size = 14, face = "bold"),
+                 plot.title = element_text(face = "bold"))
+gp <- gp + xlab(paste0("\n","Cuisine Type"))
+gp <- gp + ylab(paste0("Business Count","\n"))
+gp <- gp + ggtitle("Top Ten Type of Restaurant by Occurence - Las Vegas\n")
+print(gp)
+
+# d <- head(cuisineReviewCount, n = 10)
+# gp <- ggplot(dat = d, aes(x = reorder(CuisineType, ReviewCount), y = ReviewCount))
+# gp <- gp + theme_wsj()
+# gp <- gp + geom_bar(stat = "identity")
+# gp <- gp + geom_text(aes(label = ReviewCount), vjust = 5, color = "white")
+# gp <- gp + theme(axis.text = element_text(size = 12),
+#                  axis.text.x = element_text(angle = -55, hjust = .5),
+#                  axis.text.y = element_text(angle = -55, hjust = .5),
+#                  axis.title.y = element_text(angle = 90),
+#                  axis.title = element_text(size = 14, face = "bold"),
+#                  plot.title = element_text(face = "bold"))
+# gp <- gp + xlab(paste0("\n","Cuisine Type"))
+# gp <- gp + ylab(paste0("Review Count","\n"))
+# gp <- gp + ggtitle("Top Ten Restaurant Type by Review - Las Vegas\n")
+# print(gp)
+
 
 ```
 
