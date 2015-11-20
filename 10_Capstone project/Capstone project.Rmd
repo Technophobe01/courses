@@ -40,9 +40,9 @@ ipak(requiredPackages)
 
 The problem and question I wish to ask and answer is 
 
-- "In what region of the Yelp Dataset Challenge dataset does the highest density of a particular form of restaurant occur and which region gives the best review to a particular form of restaurant in the context of a particular event such as Mothers Day, or Fathers Day"_. Secondly, _**"Can we predict that restuarants of type X in region Y have a higher probability of a good review?"**_"
+- "In what region of the Yelp Dataset Challenge dataset does the highest density of a particular form of restaurant occur and which region gives the best review to a particular form of restaurant in the context of a particular event such as Mothers Day?"_. Secondly, _**"Can we predict that restuarants of type X in region Y have a higher probability of a good review?"**_"
 
-The intent is to combine both location, and temporal data and natural language processing to determine if a correlation exists between location, type of restaurant and event. For example can we determine if the hypothesis _**"People in region X, have the highest density of Chinese restuarants, yet give the best reviews to Italian restaurants on Father's Day"**_ is true, false or non-answerable based on the data-set we are using?
+The intent is to combine both location, and temporal data and natural language processing to determine if a correlation exists between location, type of restaurant and event. For example can we determine if the hypothesis _**"People in region X, have the highest density of Chinese restuarants, yet give the best reviews to Italian restaurants on Mother's Day"**_ is true, false or non-answerable based on the data-set we are using?
 
 ## Data Import
 
@@ -682,7 +682,11 @@ print(gp); rm(gp)
 
 #### Who gives the most reviews by restaurant type by region?
 
-In the context of Las Vegas we determined that **'Buffet'** restaurants recieve the highest review count by Star volume. Note that this also hilight a basic strength and weakness in the Yelp review system... A review is defined by the context of the review attributes of the observer... thus we get very different answers based on what we value... for example is we order by review volume, star rating and price we get one answer, if we order by price, star rating then review volume we get another...
+In the context of Las Vegas we determined that **'Buffet'** restaurants recieve the highest review count by Star volume. Note that this also hilights a basic strength and weakness in the Yelp review system... 
+
+A review is defined by the context of the review attributes of the observer... thus we get very different answers based on what we value... For example, do we order by review volume, star rating and price? Or do we order by price, star rating and review volume. In each case we get a different view of the restaurants that buble to the top. 
+
+Thus, we can observe our social context will define our search criteria and impact on our results.
 
 ```{r BusinessByReviewStar}
 
@@ -691,20 +695,17 @@ BusinessByReviewStar <- lasVegasRestaurants %>% arrange(desc(review_count), desc
 
 # Ok, so we have the list of business_id's with highest rating by review count, stars, and price_range...
 # 
-# Do a keep cleanup of categories...
+# Do a quick cleanup of categories...
+# The key point is that lapply **ALWAYS*** returns a list, hence to subset an 
+# item list you look for all values that **Do NOT match it** and return those as a list...
+# 
 d <- head(BusinessByReviewStar,10)
 d$categories
-d$categories[[1]] <- d$categories[[1]][c(-1,-2,-4)]
-d$categories[[2]] <- d$categories[[2]][c(-2)]
-d$categories[[3]] <- d$categories[[3]][c(-2)]
-d$categories[[4]] <- d$categories[[4]][c(-2)]
-d$categories[[5]] <- d$categories[[5]][c(-2)]
-d$categories[[6]] <- d$categories[[6]][c(-2)]
-d$categories[[7]] <- d$categories[[7]][c(-1,-3)]
-d$categories[[8]] <- d$categories[[8]][c(-2,-3)]
-d$categories[[9]] <- d$categories[[9]][c(-2)]
-d$categories[[10]] <- d$categories[[10]][c(-1,-3)]
-d$categories
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Restaurants" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Breakfast & Brunch" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Steakhouses" ] })
+d$categories[[8]] <- d$categories[[8]][-2]
+d$categories 
 d$categories <- unlist(d$categories)
 
 # Re-arrnage in preperation for display
@@ -732,6 +733,8 @@ gp <- gp + ggtitle("Top Ten Restaurant Type by Review Incidence \nby Star Volume
 print(gp)
 
 ```
+#### Who gives the most reviews by restaurant type by region?
+
 
 ## Methods and Data
 - Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
