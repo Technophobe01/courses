@@ -23,7 +23,7 @@ setwd("~/Documents/Dropbox/dev/cousera/courses/10_Capstone project")
 
 requiredPackages <- c("devtools","dplyr","tidyr","data.table","ggplot2","ggvis",
                       "RMySQL", "jsonlite", "psych", "plyr", "knitr", "pander",
-                      "maps", "mapproj", "maptools", "ggmap", "ggthemes")
+                      "maps", "mapproj", "maptools", "ggmap", "ggthemes", "rlist", "pipeR")
 
 ipak <- function(pkg)
 {
@@ -569,7 +569,19 @@ Note that in Las Vegas the median star rating is: **`r median(lasVegasPrice$star
 
 ### Restaurant Density by Type?
 
-Ok, so we have observed the star ratings and price range interaction. What types of restaurant exist, and which restaurants get the best reviews? The [Yelp developer documentation][1] is invaluable in this case as it contains a breakdown of the [category types][2] of restaurant listed by yelp. We use the yelp categories dat to extract the restaurant data for las vegas for exploration...
+Ok, so we have observed the star ratings and price range interaction. What types of restaurant exist, and which restaurants get the best reviews? The [Yelp developer documentation][1] is invaluable in this case as it contains a breakdown of the [category types][2] of restaurant listed by yelp. 
+
+We use the yelp categories data to extract the restaurant data for las vegas for exploration...
+
+This gives the process and answer in the context of Las Vegas as to:
+
+1. In what region of the Yelp Dataset Challenge dataset does the highest density of a particular form of restaurant occur
+2. Who gives the most reviews by restaurant type by region?
+3. Finally in the context of a particular event such as Mothers Day - _**"Can we predict that restuarants of type X in region Y have a higher probability of a good review?"**_"
+
+####  Highest density of a particular form of restaurant
+
+In the context of Las Vegas we determine that the highest occurance of restaurant is fast food, followed by mexican based on occurance.
 
 ```{r restaurantReview }
 
@@ -617,21 +629,21 @@ cuisinebyBusiness <-
   lapply(restaurantFilter$title, function(cuisineCategoryList)
     lasVegasRestaurants[grepl(cuisineCategoryList, lasVegasRestaurants$categories),"business_id"])
 
-restaurantFilter$title <- gsub("\\\\\\(","\\(",restaurantFilter$title)
-restaurantFilter$title <- gsub("\\\\\\)","\\)",restaurantFilter$title)
-restaurantFilter$title <- gsub("\\\\\\&","\\&",restaurantFilter$title)
+#restaurantFilter$title <- gsub("\\\\\\(","\\(",restaurantFilter$title)
+#restaurantFilter$title <- gsub("\\\\\\)","\\)",restaurantFilter$title)
+#restaurantFilter$title <- gsub("\\\\\\&","\\&",restaurantFilter$title)
 
 # Now we can a create list that maps the business's to each cuisine type as
 # defined by restaurantFilter$title...
 # 
-businessByCuisine <-
+businessByCuisineCount <-
   mapply(
     function(cuisine,business_list)
       list(cuisine = cuisine, business_id = business_list), restaurantFilter$title, cuisinebyBusiness, SIMPLIFY = FALSE)
 
 # further we can create a dataframe that lists cuisine type (Column Name) against business-id's (rows)
-temp <- lapply(businessByCuisine, `[[`, "business_id")
-cuisinebyBusinessCount <- 
+temp <- lapply(businessByCuisineCount, `[[`, "business_id")
+cuisinebyBusiness <- 
   data.frame(lapply(temp, `length<-`, max(lengths(temp))))
 
 # This allows us to count up the number of restaurants in Las Vegas by restaurant type...
@@ -641,14 +653,10 @@ cuisineBusinessCount <-
       # Insert a Column with each staurant name
       CuisineType = restaurantFilter$title,
       # Insert a column with the review count of each cuisineType...
-      BusinessCount = apply(cuisinebyBusinessCount, 2, function(x) length(which(!is.na(x))))
+      BusinessCount = apply(cuisinebyBusiness, 2, function(x) length(which(!is.na(x))))
     ) %>% arrange(desc(BusinessCount))
-  
-# OK, now we want to determine the most popular restaurant cuisine 'type' by review feedback...
 
-# cuisineReviewCount <- cuisinebyBusinessCount %>% 
 ```
-
 
 ```{r summaryData}
 
@@ -656,8 +664,9 @@ gp <- ggplot(dat = head(cuisineBusinessCount, n = 10),
              aes(x = reorder(CuisineType, BusinessCount), 
              y = BusinessCount))
 gp <- gp + theme_wsj()
-gp <- gp + geom_bar(stat = "identity")
-gp <- gp + geom_text(aes(label = BusinessCount), vjust = 5, color = "white")
+gp <- gp + geom_bar(aes(fill = BusinessCount),stat = "identity")
+gp <- gp + geom_text(aes(label = BusinessCount), vjust = 2, color = "white")
+gp <- gp + theme(legend.position = "none") # delete legend guide
 gp <- gp + theme(axis.text = element_text(size = 12),
                  axis.text.x = element_text(angle = -55, hjust = .5),
                  axis.text.y = element_text(angle = -55, hjust = .5),
@@ -667,24 +676,60 @@ gp <- gp + theme(axis.text = element_text(size = 12),
 gp <- gp + xlab(paste0("\n","Cuisine Type"))
 gp <- gp + ylab(paste0("Business Count","\n"))
 gp <- gp + ggtitle("Top Ten Type of Restaurant by Occurence - Las Vegas\n")
+print(gp); rm(gp)
+
+```
+
+#### Who gives the most reviews by restaurant type by region?
+
+In the context of Las Vegas we determined that **'Buffet'** restaurants recieve the highest review count by Star volume. Note that this also hilight a basic strength and weakness in the Yelp review system... A review is defined by the context of the review attributes of the observer... thus we get very different answers based on what we value... for example is we order by review volume, star rating and price we get one answer, if we order by price, star rating then review volume we get another...
+
+```{r BusinessByReviewStar}
+
+BusinessByReviewStar <- lasVegasRestaurants %>% arrange(desc(review_count), desc(stars), desc(attributes.Price_Range))  
+# head(BusinessByReviewStar$business_id,10)
+
+# Ok, so we have the list of business_id's with highest rating by review count, stars, and price_range...
+# 
+# Do a keep cleanup of categories...
+d <- head(BusinessByReviewStar,10)
+d$categories
+d$categories[[1]] <- d$categories[[1]][c(-1,-2,-4)]
+d$categories[[2]] <- d$categories[[2]][c(-2)]
+d$categories[[3]] <- d$categories[[3]][c(-2)]
+d$categories[[4]] <- d$categories[[4]][c(-2)]
+d$categories[[5]] <- d$categories[[5]][c(-2)]
+d$categories[[6]] <- d$categories[[6]][c(-2)]
+d$categories[[7]] <- d$categories[[7]][c(-1,-3)]
+d$categories[[8]] <- d$categories[[8]][c(-2,-3)]
+d$categories[[9]] <- d$categories[[9]][c(-2)]
+d$categories[[10]] <- d$categories[[10]][c(-1,-3)]
+d$categories
+d$categories <- unlist(d$categories)
+
+# Re-arrnage in preperation for display
+d <- d %>% arrange(desc(review_count))
+
+#  Calculate the midpoints of the bars.
+#  Ref: http://stackoverflow.com/questions/6644997
+#  
+d <- ddply(d, .(categories), transform, pos = cumsum( review_count ) - (0.5 * review_count))
+
+rm(gp)
+gp <- ggplot(dat = d, 
+   aes(x = reorder(categories,review_count,sum),
+             y = review_count))
+gp <- gp + theme_wsj()
+gp <- gp + geom_bar(aes(fill = d$review_count), stat = "identity")
+gp <- gp + theme(legend.position = "none") # delete legend guide
+gp <- gp + geom_text( aes(label = review_count, y = pos), vjust = .5, color = "white")
+gp <- gp + theme(axis.text = element_text(size = 12),
+                  axis.title = element_text(size = 14, face = "bold"),
+                  plot.title = element_text(face = "bold"))
+gp <- gp + xlab(paste0("\n","Cuisine Type"))
+gp <- gp + ylab(paste0("Review Count","\n"))
+gp <- gp + ggtitle("Top Ten Restaurant Type by Review Incidence \nby Star Volume - Las Vegas\n")
 print(gp)
-
-# d <- head(cuisineReviewCount, n = 10)
-# gp <- ggplot(dat = d, aes(x = reorder(CuisineType, ReviewCount), y = ReviewCount))
-# gp <- gp + theme_wsj()
-# gp <- gp + geom_bar(stat = "identity")
-# gp <- gp + geom_text(aes(label = ReviewCount), vjust = 5, color = "white")
-# gp <- gp + theme(axis.text = element_text(size = 12),
-#                  axis.text.x = element_text(angle = -55, hjust = .5),
-#                  axis.text.y = element_text(angle = -55, hjust = .5),
-#                  axis.title.y = element_text(angle = 90),
-#                  axis.title = element_text(size = 14, face = "bold"),
-#                  plot.title = element_text(face = "bold"))
-# gp <- gp + xlab(paste0("\n","Cuisine Type"))
-# gp <- gp + ylab(paste0("Review Count","\n"))
-# gp <- gp + ggtitle("Top Ten Restaurant Type by Review - Las Vegas\n")
-# print(gp)
-
 
 ```
 
