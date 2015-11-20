@@ -2,12 +2,15 @@
 title: "Data Science Capstone - Yelp Dataset Analysis"
 author: "Technophobe1"
 date: "November 2, 2015"
-output: 
-  html_document: 
+output:
+  html_document:
     highlight: tango
     number_sections: yes
     theme: cerulean
     toc: no
+  pdf_document:
+    toc: no
+  word_document: default
 ---
 
 ```{r setOptions, echo = FALSE, message = FALSE, error = FALSE, warning = FALSE, results = 'hide'}
@@ -21,8 +24,8 @@ cleanbib()
 ```{r Setup, echo=FALSE, message=FALSE, results='hide'}
 setwd("~/Documents/Dropbox/dev/cousera/courses/10_Capstone project")
 
-requiredPackages <- c("devtools","dplyr","tidyr","data.table","ggplot2","ggvis",
-                      "RMySQL", "jsonlite", "psych", "plyr", "knitr", "pander",
+requiredPackages <- c("devtools","plyr","dplyr","tidyr","data.table","ggplot2","ggvis",
+                      "RMySQL", "jsonlite", "psych", "knitr", "pander",
                       "maps", "mapproj", "maptools", "ggmap", "ggthemes", "rlist", "pipeR")
 
 ipak <- function(pkg)
@@ -42,7 +45,7 @@ The problem and question I wish to ask and answer is
 
 - "In what region of the Yelp Dataset Challenge dataset does the highest density of a particular form of restaurant occur and which region gives the best review to a particular form of restaurant in the context of a particular event such as Mothers Day?"_. Secondly, _**"Can we predict that restuarants of type X in region Y have a higher probability of a good review?"**_"
 
-The intent is to combine both location, and temporal data and natural language processing to determine if a correlation exists between location, type of restaurant and event. For example can we determine if the hypothesis _**"People in region X, have the highest density of Chinese restuarants, yet give the best reviews to Italian restaurants on Mother's Day"**_ is true, false or non-answerable based on the data-set we are using?
+The intent is to combine both location, and temporal data and natural language processing to determine if a correlation exists between location, type of restaurant and event. For example, can we determine if the hypothesis _**"People in region X, have the highest density of Chinese restuarants, yet give the best reviews to Italian restaurants on Mother's Day"**_ is true, false or non-answerable based on the data-set we are using?
 
 ## Data Import
 
@@ -682,15 +685,22 @@ print(gp); rm(gp)
 
 #### Who gives the most reviews by restaurant type by region?
 
+
 In the context of Las Vegas we determined that **'Buffet'** restaurants recieve the highest review count by Star volume. Note that this also hilights a basic strength and weakness in the Yelp review system... 
 
+ 
 A review is defined by the context of the review attributes of the observer... thus we get very different answers based on what we value... For example, do we order by review volume, star rating and price? Or do we order by price, star rating and review volume. In each case we get a different view of the restaurants that buble to the top. 
 
+ 
 Thus, we can observe our social context will define our search criteria and impact on our results.
 
+ 
 ```{r BusinessByReviewStar}
 
-BusinessByReviewStar <- lasVegasRestaurants %>% arrange(desc(review_count), desc(stars), desc(attributes.Price_Range))  
+BusinessByReviewStar <- lasVegasRestaurants %>% 
+  distinct(business_id) %>%
+    arrange(desc(review_count), desc(stars), desc(attributes.Price_Range))  
+
 # head(BusinessByReviewStar$business_id,10)
 
 # Ok, so we have the list of business_id's with highest rating by review count, stars, and price_range...
@@ -708,7 +718,7 @@ d$categories[[8]] <- d$categories[[8]][-2]
 d$categories 
 d$categories <- unlist(d$categories)
 
-# Re-arrnage in preperation for display
+# Re-arrange in preperation for display
 d <- d %>% arrange(desc(review_count))
 
 #  Calculate the midpoints of the bars.
@@ -724,17 +734,145 @@ gp <- gp + theme_wsj()
 gp <- gp + geom_bar(aes(fill = d$review_count), stat = "identity")
 gp <- gp + theme(legend.position = "none") # delete legend guide
 gp <- gp + geom_text( aes(label = review_count, y = pos), vjust = .5, color = "white")
-gp <- gp + theme(axis.text = element_text(size = 12),
+gp <- gp + geom_text( aes(label = name, y = pos), size = 3.5, vjust = 5, color = "white")
+gp <- gp + theme( axis.text = element_text(size = 12),
                   axis.title = element_text(size = 14, face = "bold"),
+                  axis.title.y = element_text(angle = 90),
                   plot.title = element_text(face = "bold"))
 gp <- gp + xlab(paste0("\n","Cuisine Type"))
 gp <- gp + ylab(paste0("Review Count","\n"))
-gp <- gp + ggtitle("Top Ten Restaurant Type by Review Incidence \nby Star Volume - Las Vegas\n")
+gp <- gp + ggtitle("Top Ten Restaurants by Review Incidence \nby Star Volume - Las Vegas\n")
 print(gp)
 
 ```
-#### Who gives the most reviews by restaurant type by region?
 
+#### Which restaurant type gets the best review in the context Mother's Day?
+
+```{r mothersDayAnalysis}
+
+# Ok, so our goal now is to take the YelpBusinessData Las Vegas subset and use 
+# that to subset the YelpReviewData leaving us with the subset of reviews 
+# associated with Las Vegas. 
+# 
+# From this we can create a subset of the Review dataset to determine the set
+# of reviews posted on or after Mother's day.
+# 
+# Note: That we are using the US mother's day in the Las Vegas data set
+# context... Different countries have different mothers day celebration dates.
+#
+# Mother Day
+# 
+# ref: http://www.timeanddate.com/holidays/us/mothers-day
+#
+# The yelp review dataset spans 2004-10-12 through to 2015-01-08
+#
+#
+mothersDay <- data.frame (
+  date = as.Date( 
+    c("2004-05-09",
+      "2005-05-08",
+      "2006-05-14",
+      "2007-05-13",
+      "2008-05-11",
+      "2009-05-10",
+      "2010-05-09",
+      "2011-05-08",
+      "2012-05-12",
+      "2013-05-12",
+      "2014-05-11",
+      "2015-05-10"))
+)
+
+# Step 1: Create List of Restaurants...
+lasVegasRestaurants <- yelpBusinessData %>% 
+  filter( grepl("Las Vegas", city ) ) %>%
+  filter( grepl("Restaurants", categories)) %>%
+  filter( open == TRUE)
+
+# Step 2: OK, how many review occured across the Yelp Review set on US Mothers
+# Day? Well, it turns out we have 936 reviews 12 years of data...
+# 
+# We take the yelpReviewData and filter out all non Las Vegas business id's. We then filter out all none mother's date reviews by date and then do a join with the lasVegasRestaurants dataset to get the actual star rating, price range etc...
+lasVegasRestMothersDayReviews <- yelpReviewData %>% 
+  filter( business_id %in% lasVegasRestaurants$business_id  ) %>%
+  filter( as.Date(date) %in% as.Date(mothersDay$date)) %>%
+    group_by(business_id) %>%
+      mutate(count = n()) %>% # Create a count of business_id's
+        left_join(lasVegasRestaurants, by = "business_id")
+
+# Ok, now we extract data from the lasVegasRestaurants to expand 
+# lasVegasRestReviews 
+
+# Now we can answer a set of questions...
+# 
+# 1. Which type of cuisine gets the best review in the context of Mother's Day reviews?
+# 2. What is the distribution of reviews over the year and holidays?
+# 
+
+BusinessMothersDayByReviewStar <- lasVegasRestMothersDayReviews %>% 
+    distinct(business_id) %>%
+      arrange(desc(count), desc(stars.x), desc(attributes.Price_Range))
+  
+
+d <- head(BusinessMothersDayByReviewStar,10)
+d$categories
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Restaurants" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Breakfast & Brunch" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Steakhouses" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Nightlife" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Chicken Wings" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Food" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Breweries" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Sports Bars" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Fast Food" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Bars" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Diners" ] })
+d$categories[] <- lapply(d$categories, function(x) { x[ x != "Food Stands" ] })
+d$categories[[7]] <- "Restaurants"
+d$categories 
+d$categories <- unlist(d$categories)
+
+# Re-arrange in preperation for display
+d <- d %>% arrange(desc(review_count))
+
+#  Calculate the midpoints of the bars.
+#  Ref: http://stackoverflow.com/questions/6644997
+
+require(plyr)
+d <- ddply(d, .(categories), transform, pos = cumsum( review_count ) - (0.5 * review_count))
+
+# Clean Up Names to fit columns
+# 
+d$name[1] <- "Chicago Brewing\n Company"
+d$name[8] <- "Taqueria La Casa\nDel Pastor"
+d$name[10] <- "Surang's Thai\nKitchen"
+
+rm(gp)
+gp <- ggplot(dat = d, 
+   aes(x = reorder(categories,review_count,sum),
+             y = review_count))
+gp <- gp + theme_wsj()
+gp <- gp + geom_bar(aes(fill = d$review_count), stat = "identity")
+gp <- gp + expand_limits(y = c(min(pretty(c(d$review_count, min(d$review_count) * (10)))), 
+  max(pretty(c(d$review_count, max(d$review_count) / (10))))))
+gp <- gp + theme(legend.position = "none") # delete legend guide
+gp <- gp + geom_text( aes(label = review_count, y = pos), vjust = .1, color = "white")
+gp <- gp + geom_text( aes(label = name, y = pos), size = 3.5, vjust = 4, color = "white")
+gp <- gp + theme( axis.text = element_text(size = 12),
+                  axis.title = element_text(size = 14, face = "bold"),
+                  axis.title.y = element_text(angle = 90),
+                  plot.title = element_text(face = "bold"))
+gp <- gp + xlab(paste0("\n","Cuisine Type"))
+gp <- gp + ylab(paste0("Review Count","\n"))
+gp <- gp + ggtitle("Top Ten Restaurants by Type on Mother's Day \nby Review Incidence - Las Vegas\n")
+print(gp)
+
+
+
+
+
+
+```
 
 ## Methods and Data
 - Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
