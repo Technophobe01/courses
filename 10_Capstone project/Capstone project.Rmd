@@ -28,7 +28,7 @@ requiredPackages <- requiredPackages <- c("devtools","plyr","dplyr","tidyr","dat
                       "ggplot2","ggvis", "scales",
                       "RMySQL", "jsonlite", "psych", "knitr", "pander",
                       "maps", "mapproj", "maptools", "ggmap", "ggthemes", "rlist", "pipeR",
-                      "lubridate")
+                      "lubridate", "caret", "wordcloud")
 
 ipak <- function(pkg)
 {
@@ -930,11 +930,229 @@ gp <- gp + labs(title = paste( "Yelp Review count by Month in Las Vegas\nby # St
                 y = "Total # of Review Submissions (by Month)")
 gp
 
+```
 
+## Feature Inspection
 
+## Restaurant Prediction
+
+Our intent is to predict the star rating of a restaurant in a given region of the data set... Is this posible? 
+
+### Near Zero Varience Predictors
+
+To filter for near-zero variance predictors, we use the caret package function nearZeroVar() which will return the column numbers of any predictors that fulfill the conditions outlined. 
+
+Why check? There are potential advantages to removing predictors prior to modeling. First, fewer predictors means decreased computational time and complexity. Second, if two predictors are highly correlated, this implies that they are measuring the same underlying information. Removing one should not compromise the performance of the model and might lead to a more parsimonious and interpretable model. Third, some models can be crippled by predictors with degenerate distributions. In these cases, there can be a significant improvement in model performance and/or stability without the problematic variables.
+
+#### Correlation Predictors
+
+Similarly, to filter on between-predictor correlations, the cor function was used to calculate the correlations between predictor variables:
+
+To visually examine the correlation structure of the data, we used the corrplot package The function corrplot has many options including one that will reorder the variables in a way that reveals clusters of highly correlated predictors.
+
+```{r CorrPlot}
 
 
 ```
+---
+
+### Approach
+
+A key focus of the exploratory analysis was to look to determine how and where the Yelp data interacts. One aspect of the exploratory analysis has been the stabilization of the reviews by volume over time. As yelp has grown, the accuracy of it reviews appears to improve in part becuase the impact of review outliers is less.
+
+Our supposition is that a key driver of Yelp review usage is the **star rating**. Hence, we want to look at what drives this rating and look at how we might predict future **star ratings**. Based on the data so far reviewed, our sense is that the review text of past reviews may be a strong predictor of future reviews. Our asusmption here is that **People like to be right together, or wrong together; people never want to be right alone, or wrong alone** 
+
+Thus, our hypothesis is that positive star ratings are driven by positive textual reviews. Hence, we can look at whether positive and negative review language has a material impact on the star rating given in a review. To do this we perform a linear regression of stars on the number of positive words in the review, the number of negative words in the review. We also look at the length of the review in the context of the language used. i.e. The amount of words in the context of positive or negative language implies stronger feelings.
+
+Thus, our approach is to initially perform a regression of # stars in a Yelp review on # positive words, # negative words, and # words in review, returns these results
+
+### Linear Regression Model
+
+```{r Linear regressionModel}
+
+################################################################################
+# Support Functions
+################################################################################
+
+score.sentiment <- function(sentences, pos.words, neg.words)
+{
+  require(plyr)
+  require(stringr)
+
+  # we got a vector of sentences. plyr will handle a list
+  # or a vector as an "l" for us
+  # we want a simple array ("a") of scores back, so we use
+  # "l" + "a" + "ply" = "laply":
+  scores = laply(sentences, function(sentence, pos.words, neg.words) {
+
+    # clean up sentences with R's regex-driven global substitute, gsub():
+    sentence = gsub('[[:punct:]]', '', sentence)
+    sentence = gsub('[[:cntrl:]]', '', sentence)
+    sentence = gsub('\\d+', '', sentence)
+    # and convert to lower case:
+    sentence = tolower(sentence)
+
+    # split into words. str_split is in the stringr package
+    word.list = str_split(sentence, '\\s+')
+    # sometimes a list() is one level of hierarchy too much
+    words = unlist(word.list)
+
+    # compare our words to the dictionaries of positive & negative terms
+    pos.matches = match(words, pos.words)
+    neg.matches = match(words, neg.words)
+
+    # match() returns the position of the matched term or NA
+    # we just want a TRUE/FALSE:
+    pos.matches = !is.na(pos.matches)
+    neg.matches = !is.na(neg.matches)
+
+    # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
+    score = sum(pos.matches) - sum(neg.matches)
+
+    return(score)
+  }, pos.words, neg.words )
+
+  scores.df = scores[]
+  return(scores.df)
+}
+
+score.Pos <- function(sentences, pos.words, neg.words)
+{
+    require(plyr)
+    require(stringr)
+
+    # we got a vector of sentences. plyr will handle a list
+    # or a vector as an "l" for us
+    # we want a simple array ("a") of scores back, so we use
+    # "l" + "a" + "ply" = "laply":
+    sumPos = laply(sentences, function(sentence, pos.words, neg.words) {
+
+      # clean up sentences with R's regex-driven global substitute, gsub():
+      sentence = gsub('[[:punct:]]', '', sentence)
+      sentence = gsub('[[:cntrl:]]', '', sentence)
+      sentence = gsub('\\d+', '', sentence)
+      # and convert to lower case:
+      sentence = tolower(sentence)
+
+      # split into words. str_split is in the stringr package
+      word.list = str_split(sentence, '\\s+')
+      # sometimes a list() is one level of hierarchy too much
+      words = unlist(word.list)
+
+      # compare our words to the dictionaries of positive & negative terms
+      pos.matches = match(words, pos.words)
+      neg.matches = match(words, neg.words)
+
+      # match() returns the position of the matched term or NA
+      # we just want a TRUE/FALSE:
+      pos.matches = !is.na(pos.matches)
+      neg.matches = !is.na(neg.matches)
+
+      # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
+      score = sum(pos.matches) - sum(neg.matches)
+
+      return(sum(pos.matches))
+    }, pos.words, neg.words )
+
+    sumPos.df = sumPos[]
+    return(sumPos.df)
+  }
+
+score.Neg <- function(sentences, pos.words, neg.words)
+{
+  require(plyr)
+  require(stringr)
+
+  # we got a vector of sentences. plyr will handle a list
+  # or a vector as an "l" for us
+  # we want a simple array ("a") of scores back, so we use
+  # "l" + "a" + "ply" = "laply":
+  sumNeg = laply(sentences, function(sentence, pos.words, neg.words) {
+
+    # clean up sentences with R's regex-driven global substitute, gsub():
+    sentence = gsub('[[:punct:]]', '', sentence)
+    sentence = gsub('[[:cntrl:]]', '', sentence)
+    sentence = gsub('\\d+', '', sentence)
+    # and convert to lower case:
+    sentence = tolower(sentence)
+
+    # split into words. str_split is in the stringr package
+    word.list = str_split(sentence, '\\s+')
+    # sometimes a list() is one level of hierarchy too much
+    words = unlist(word.list)
+
+    # compare our words to the dictionaries of positive & negative terms
+    pos.matches = match(words, pos.words)
+    neg.matches = match(words, neg.words)
+
+    # match() returns the position of the matched term or NA
+    # we just want a TRUE/FALSE:
+    pos.matches = !is.na(pos.matches)
+    neg.matches = !is.na(neg.matches)
+
+    # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
+    score = sum(pos.matches) - sum(neg.matches)
+
+    return(sum(neg.matches))
+  }, pos.words, neg.words )
+
+  sumNeg.df = sumNeg[]
+  return(sumNeg.df)
+}
+
+# Step 1: Create List of Restaurants...
+lasVegasRestaurants <- yelpBusinessData %>% 
+  filter( grepl("Las Vegas", city ) ) %>%
+  filter( grepl("Restaurants", categories)) %>%
+  filter( open == TRUE)
+
+# # Step 2: Create List of Restaurants...
+# lasVegasRestaurantReviewAnalysis <- yelpReviewData %>% 
+#   filter( business_id %in% lasVegasRestaurants$business_id  ) %>%
+#     group_by(business_id) %>%
+#       mutate(BizReviewCount = n()) %>% # Create a count of business_id's
+#         left_join(lasVegasRestaurants, by = "business_id") %>% 
+#           arrange(business_id)
+
+# Load Positive Word List and Negative Word List
+strsPos <- readLines("./data/positive-words.txt")
+strsNeg <- readLines("./data/negative-words.txt")
+positiveWords <- read.csv(text = strsPos, skip = 33, nrows = length(strsPos) - 3)
+negativeWords <- read.csv(text = strsNeg, skip = 33, nrows = length(strsNeg) - 3)
+
+pos_Words <- as.data.frame(positiveWords)
+neg_Words <- as.data.frame(negativeWords)
+
+if ( !exists("lasVegasRestaurantReviewAnalysisFinal") ) {
+  if (file.exists( file.path(dataDir,"yelpCheckInData.rds"))) {
+    lasVegasRestaurantReviewAnalysisFinal <- readRDS( file.path(dataDir, "lasVegasRestaurantReviewAnalysisFinal.rds"))
+  } else {
+    lasVegasRestaurantReviewAnalysisFinal <- yelpReviewData %>%
+    filter(business_id %in% lasVegasRestaurants$business_id) %>%
+    group_by(business_id) %>%
+    mutate(BizReviewCount = n()) %>% # Create a count of business_id's
+    mutate(reviewLength = stringr::str_count(text)) %>%
+    mutate(totVotes = sum(votes.cool + votes.funny + votes.useful)) %>%
+    mutate(totSent = score.sentiment(text, strsPos, strsNeg)) %>%
+    mutate(totPos = score.Pos(text, positiveWords, strsNeg)) %>%
+    mutate(totPos = score.Neg(text, negativeWords, strsNeg)) %>%
+    left_join(lasVegasRestaurants, by = "business_id") %>%
+    arrange(business_id) 
+    saveRDS( lasVegasRestaurantReviewAnalysis, file.path(dataDir, "lasVegasRestaurantReviewAnalysisFinal.rds"))
+
+  }
+}
+
+#---------- Create Linear Model ---------------------
+d <- lasVegasRestaurantReviewAnalysis 
+
+model.fit = lm( stars.y ~ reviewLength + totPos + totPos + totSent + BizReviewCount, data = lasVegasRestaurantReviewAnalysis )
+summary(model.fit)
+  
+
+```
+### Random Forest Model
+
 
 ## Methods and Data
 - Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important

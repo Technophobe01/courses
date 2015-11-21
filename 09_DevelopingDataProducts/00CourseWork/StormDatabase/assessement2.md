@@ -369,6 +369,7 @@ stormData %>% group_by(PROPDMGEXP) %>% summarise(count=n())
 ## Source: local data frame [19 x 2]
 ## 
 ##    PROPDMGEXP  count
+##        (fctr)  (int)
 ## 1             445422
 ## 2           -      1
 ## 3           ?      8
@@ -410,6 +411,7 @@ stormData %>% group_by(PROPDMGEXP) %>% summarise(count=n())
 ## Source: local data frame [4 x 2]
 ## 
 ##   PROPDMGEXP  count
+##       (fctr)  (int)
 ## 1          0 445740
 ## 2          B     39
 ## 3          K 401115
@@ -431,6 +433,7 @@ stormData %>% group_by(propExponent) %>% summarise(count=n())
 ## Source: local data frame [4 x 2]
 ## 
 ##   propExponent  count
+##          (dbl)  (int)
 ## 1        1e+00 445740
 ## 2        1e+03 401115
 ## 3        1e+06  10930
@@ -454,6 +457,7 @@ stormData %>% group_by(CROPDMGEXP) %>% summarise(count=n())
 ## Source: local data frame [9 x 2]
 ## 
 ##   CROPDMGEXP  count
+##       (fctr)  (int)
 ## 1            595654
 ## 2          ?      7
 ## 3          0     18
@@ -485,6 +489,7 @@ stormData %>% group_by(CROPDMGEXP) %>% summarise(count=n())
 ## Source: local data frame [4 x 2]
 ## 
 ##   CROPDMGEXP  count
+##       (fctr)  (int)
 ## 1          0 595680
 ## 2          B      4
 ## 3          K 260310
@@ -506,6 +511,7 @@ stormData %>% group_by(cropExponent) %>% summarise(count=n())
 ## Source: local data frame [4 x 2]
 ## 
 ##   cropExponent  count
+##          (dbl)  (int)
 ## 1        1e+00 595680
 ## 2        1e+03 260310
 ## 3        1e+06   1830
@@ -708,6 +714,8 @@ gp <- ggplot(head(eventImpactSummary, n = 10),
                  ymin = -5000,
                  ymax = eventInjuries + 1000
                  ))
+gp <- gp + theme_wsj() + theme(axis.title = element_text(size = 12))
+gp <- gp + theme(axis.title.y = element_text(angle = 90))
 gp <- gp + geom_point(aes(size = eventCount))
 gp <- gp + scale_size_area(max_size=20)
 gp <- gp + geom_point(size = 5) + geom_text(size = 4, hjust = .7, vjust = 3 )
@@ -761,9 +769,9 @@ gp <- ggplot(head(propertyDamageSummary, n = 10),
                  color=eventType,
                  label = eventType,
                  xmin = -1000,
-                 ymin = -15000,
+                 ymin = -20000,
                  xmax = 110000000000, 
-                 ymax = 100000 ))
+                 ymax = 380000 ))
 gp <- gp + geom_point(aes(size = totalDamage))
 gp <- gp + scale_size_area(max_size=20)
 gp <- gp + geom_point(size = 5) + geom_text(size = 4, hjust = .5, vjust = 4 )
