@@ -7,7 +7,6 @@ output:
     highlight: tango
     number_sections: yes
     theme: cerulean
-    toc: no
   pdf_document:
     toc: no
   word_document: default
@@ -16,18 +15,20 @@ output:
 ```{r setOptions, echo = FALSE, message = FALSE, error = FALSE, warning = FALSE, results = 'hide'}
 # Here we set the default knitr options and then override as the point of use...
 require(knitr)
-opts_chunk$set(echo = FALSE, message = FALSE, error = FALSE, warning = FALSE, results = 'hide', fig.width = 16, fig.height = 8)
+opts_chunk$set(echo = FALSE, message = FALSE, error = FALSE, warning = FALSE, results = 'hide', fig.width = 8, fig.height = 5)
 require(knitcitations)
 cleanbib()
 ```
 
+
 ```{r Setup, echo=FALSE, message=FALSE, results='hide'}
 setwd("~/Documents/Dropbox/dev/cousera/courses/10_Capstone project")
 
-requiredPackages <- requiredPackages <- c("devtools","plyr","dplyr","tidyr","data.table",
-                      "ggplot2","ggvis", "scales",
+requiredPackages <- requiredPackages <- c("ascii", "devtools","plyr","dplyr","tidyr","data.table",
+                      "ggplot2","grid","ggvis", "scales",
                       "RMySQL", "jsonlite", "psych", "knitr", "pander",
-                      "maps", "mapproj", "maptools", "ggmap", "ggthemes", "rlist", "pipeR",
+                      "maps", "mapproj", "maptools", "ggmap", "ggthemes", "ggExtra", 
+                      "rlist", "pipeR",
                       "lubridate", "caret", "wordcloud")
 
 ipak <- function(pkg)
@@ -41,15 +42,33 @@ ipak <- function(pkg)
 ipak(requiredPackages)
 ```
 
-# Predictive Review by Location and Business Type
+# Executive Summary
 
-The problem and question I wish to ask and answer is 
+The purpose of this document is to develop and answer the Coursera Peer Assessment for the Coursera DataScience Capstone Course. This reports source code is available via GitHub, if you wish to review the code, markdown formatting or html, or pdf output in more detail.
 
-- "In what region of the Yelp Dataset Challenge dataset does the highest density of a particular form of restaurant occur and which region gives the best review to a particular form of restaurant in the context of a particular event such as Mothers Day?"_. Secondly, _**"Can we predict that restuarants of type X in region Y have a higher probability of a good review?"**_"
+The problem and question we wish to ask and answer is 
+
+- "_"In what region of the Yelp Dataset Challenge dataset does the highest density of a particular form of restaurant occur (Example Navada) and which particular form of restaurant in the context of a particular event such as Mothers Day gets the best review?"_ Secondly, _**"What characterists would allow us to predict that restuarants of type X in region Y have a higher probability of a good review?"**_
 
 The intent is to combine both location, and temporal data and natural language processing to determine if a correlation exists between location, type of restaurant and event. For example, can we determine if the hypothesis _**"People in region X, have the highest density of Chinese restuarants, yet give the best reviews to Italian restaurants on Mother's Day"**_ is true, false or non-answerable based on the data-set we are using?
 
-## Data Import
+# Conclusions
+
+
+## Data Set Description
+
+The dataset used in this report was provided by Yelp as part of the Yelp Data Set challenge program. The yelp dataset includes:
+
+| Dataset Attributes | Dataset Regions |
+|---------|---------|
+| 1.6M reviews and 500K tips by 366K users for 61K businesses | Europe: U.K.: Edinburgh, Germany: Karlsruhe |
+| 481K business attributes, e.g., hours, parking availability, ambience.| Canada: Montreal and Waterloo |
+|Social network of 366K users for a total of 2.9M social edges|U.S.: Pittsburgh, Charlotte, Urbana-Champaign, Phoenix, Las Vegas, Madison|
+| Aggregated check-ins over time for each of the 61K businesses||
+
+
+Our goal here is to do an initial mapping of the geo data, nothing to complex our goals are to explore the data. We start with a macro view, what cities do we have in the data set? From that we can then start to look at the geographic data...
+
 
 ```{r Data_Download }
 
@@ -280,22 +299,6 @@ dbDisconnect(conDB)
 ```
 ## Exploratory Analysis
 
-
-The yelp dataset includes:
-
-- 1.6M reviews and 500K tips by 366K users for 61K businesses
-- 481K business attributes, e.g., hours, parking availability, ambience.
-- Social network of 366K users for a total of 2.9M social edges.
-- Aggregated check-ins over time for each of the 61K businesses
-
-The datset covers 10 cities...
- 
-- U.K.: Edinburgh
-- Germany: Karlsruhe
-- Canada: Montreal and Waterloo
-- U.S.: Pittsburgh, Charlotte, Urbana-Champaign, Phoenix, Las Vegas, Madison
-
-Our goal here is to do an initial mapping of the geo data, nothing to complex our goals are to explore the data. We start with a macro view, what cities do we have in the data set? From that we can then start to look at the geographic data...
  
 ```{r InitialAnalysis }
 
@@ -333,15 +336,17 @@ geo.cluster <- kmeans(yelpBusinessData[,c('longitude','latitude')],city.centres)
 # 
 gp <- ggplot(data.frame(geo.cluster$centers), 
              aes(longitude, latitude, color = cities))
-gp <- gp + borders("world", background = "lightblue", fill = "white", col = "cornflowerblue") 
+gp <- gp + borders("world", 
+                    background = "lightblue", fill = "white", 
+                    col = "cornflowerblue") 
 gp <- gp + geom_point(aes(size = geo.cluster$size))
 gp <- gp + geom_text(aes(city.centres$lon, city.centres$lat, label = cities), 
                      size = 3, hjust = -0.2, vjust = .3, color = "black", name = "Cities \n")
 gp <- gp + scale_size_area(name = "Cluster Size \n")
+gp <- gp + ggtitle("Inside")
 gp
-rm(gp)
 
-require(dplyr)
+
 # convert to numeric
 clusterAnalysis <- data.frame(cbind(City = cities, Cluster = geo.cluster$size))
 clusterAnalysis$Cluster <- as.numeric(as.character(clusterAnalysis$Cluster))
@@ -352,226 +357,310 @@ What we find is that the size of the relative geospatial datasets sku's the init
 
 ```{r, results='asis'}
 
-kable(arrange(clusterAnalysis,Cluster))
+pandoc.table(arrange(clusterAnalysis,Cluster),style = "grid", caption = "Cluster Analysis", justify = "left")
 
 ```
 
-Now we have a sense of the data clusters and their sizes, lets take a look at the next component of the proposed analysis.
+Now we have a sense of the data clusters and their sizes. We create a subset for Las Vegas and created a set of cluster map that examined the price denisity of restaurants. Looking at the data we saw a cluster of expensive restaurants downtown. Looking at the data we see:
 
-- In what region of the Yelp Challenge dataset do the highest priced restuarants occcur?
-- In what region of the Yelp Challenge dataset does the highest density of a particular form of restaurant occur?
-- Which region gives the best review to a particular form of restaurant?
+```{r describeData, results ='asis'}
+lasVegasRestaurants <- yelpBusinessData %>% 
+  filter( grepl("Las Vegas", city ) ) %>%
+  filter( grepl("Restaurants", categories)) %>%
+  filter( open == TRUE)
 
-for the first question the intent is to investigate the types of restuarant by cluster, and then prioratise them by cluster. We can then look at the type of restuarant as a % of restuarants by cluster to determine popularity aginst rating.
-
-For example, we can create a subset for Phoenix and create a cluster map that examines the price denisity of restuarants. Lookign at the data we see that there is a cluster of expensive restaurants downtown. Looking at the data we see:
-
-```{r mapSetup}
-
-map <- get_map(location = 'Las Vegas, NV', zoom = 10, maptype = "roadmap")
-yelpBusinessData$city <- as.factor(yelpBusinessData$city)
-yelpBusinessData.NV <- yelpBusinessData[which(yelpBusinessData$city == "Las Vegas"),]
-# Only restaurants (as in category)
-yelpBusinessData.NV.rest <- yelpBusinessData.NV[which(grepl("Restaurants", yelpBusinessData.NV$categories)),]
-
-```
-
-```{r describeData, results='asis'}
-
-kable(describe( yelpBusinessData.NV.rest$attributes.Price_Range))
+pandoc.table(describe( lasVegasRestaurants$attributes.Price_Range),style = "grid", caption = "Price Density")
 # Explicitly call plyr count... Interaction with dplyr... #FIX
-pander(plyr::count( yelpBusinessData.NV.rest$attributes.Price_Range ))
+# Oh, my god this was so stupid I had forgotten about t() transpose function!
+pandoc.table(t(plyr::count( lasVegasRestaurants$attributes.Price_Range)),style = "grid", caption = "Price Frequency [1:4]")
 
 ```
-Firstly, lets just look at all the Las Vegas restaurants that are open and map out their price range...
 
-```{r lasVegasPriceDensity}
+```{r lasVegasPriceCreate }
+
 lasVegasPrice <- yelpBusinessData %>% 
   filter(city == "Las Vegas") %>%
   filter(grepl("Restaurants", categories)) %>%
   filter(open == TRUE)
 
-mP <- ggmap(map, extent = "device", legend = "topright")
-mP <- mP + geom_point( data = lasVegasPrice,
-                      aes( x = lasVegasPrice$longitude,
-                           y = lasVegasPrice$latitude,
-                           color = lasVegasPrice$attributes.Price_Range,
-                           size =  lasVegasPrice$attributes.Price_Range),
-                      alpha = 0.5 )
+```
 
-# Set the Legend to be a continous colour bar... 
-mP <- mP + scale_colour_continuous(low = "blue", 
-                                   high = "red", 
-                                   space = "Lab", 
-                                   guide = "colorbar", 
-                                   name = "Price Range \n")
-mP <- mP + scale_size_area(name = "Price Range \n")
-mP <- mP + ggtitle("Plot 1: Price Density - Las Vegas\n")
-mP1 <- mP # Assign to Panel4
+Note that in Las Vegas the median star rating is: **`r median(lasVegasPrice$stars, na.rm = TRUE)`** and the median Price range is **`r median(lasVegasPrice$attributes.Price_Range, na.rm = TRUE)`**. Hence, we see that when we focus interest on higher priced restaurant we see a sku to the the center of town. Specifically, the Las Vegas party strip.
+
+```{r lasVegasPriceDelete }
+# We delete lasVegasPrice just to be clean...
+rm(lasVegasPrice)
 
 ```
 
-OK, where are the expensive restaurants?... Lets look at the restaurants with a price range of between 3 and 4...
+## Data Validation
 
-```{r lasVegasExpDensity }
+After removal of the superfluous values, and data columns we move to validate the data in preperation for analysis… We first checked for and prepare to filter out near-zero varience predictors, and validate for between-predictor correlations
 
-lasVegasExpDensity <- yelpBusinessData %>% 
-  filter(city == "Las Vegas") %>%
-  filter(grepl("Restaurants", categories)) %>%
-  filter(open == TRUE) %>%
-  filter( (attributes.Price_Range == 3 | attributes.Price_Range == 4) )
+### Near Zero Varience Predictors
 
-# lasVegasExpDensity <- lasVegasExpDensity[which(lasVegasExpDensity$attributes$Price_Range == 3 |
-#     lasVegasExpDensity$attributes$Price_Range == 4),]
+To filter for near-zero variance predictors, we use the caret package function nearZeroVar() which will return the column numbers of any predictors that fulfill the conditions outlined. 
 
-mP <- ggmap(map, extent = "device", legend = "topright")
-mP <- mP + geom_point( data = lasVegasExpDensity,
-                      aes( x = lasVegasExpDensity$longitude,
-                           y = lasVegasExpDensity$latitude,
-                           color = lasVegasExpDensity$attributes.Price_Range,
-                           size =  lasVegasExpDensity$attributes.Price_Range),
-                      alpha = 0.5 )
+Why check? There are potential advantages to removing predictors prior to modeling. First, fewer predictors means decreased computational time and complexity. Second, if two predictors are highly correlated, this implies that they are measuring the same underlying information. Removing one should not compromise the performance of the model and might lead to a more parsimonious and interpretable model. Third, some models can be crippled by predictors with degenerate distributions. In these cases, there can be a significant improvement in model performance and/or stability without the problematic variables.
 
-# Set the Legend to be a continous colour bar... 
-mP <- mP + scale_colour_continuous(low = "blue", 
-                                   high = "red", 
-                                   space = "Lab", 
-                                   guide = "colorbar", 
-                                   name = "Price Range\n")
+```{r Near Zero Varience Predictors }
 
-mP <- mP + scale_size_area(name = "Price Range \n")
-mP <- mP + ggtitle("Plot 2: Price Range [3 to 4] - Las Vegas\n")
-mP2 <- mP # Assign to Panel2
-
-```
-
-Hmmm, now lets look at restaurants with good star ratings [3 through 4] and a price range of 3 through 4... 
-
-```{r lasVegasDensityStarByPrice }
-DensityStarByPrice <- yelpBusinessData %>% 
-  filter(city == "Las Vegas") %>%
-  filter(grepl("Restaurants", categories)) %>%
-  filter(open == TRUE) %>% 
-  filter( stars > 3 ) %>%
-  filter( (attributes.Price_Range == 3 | attributes.Price_Range == 4) )
-
-#  filter( (attributes[[6]][] == 3 | attributes[[6]][] == 4) )
+# Here is a data set I created earlier... Chuckle
 # 
-# Exp <- yelpBusinessData.PA.rest[which(yelpBusinessData.PA.rest$attributes$Price_Range == 3 |
-#     yelpBusinessData.PA.rest$attributes$Price_Range == 4),]
+# There is quite alot going on here. First we create a subset of restaurants.
+# From that we create a merged business and review dataset just for Las Vegas.
+# We restrict to Las Vegas because the computation time is prohibative...
 
-mP <- ggmap(map, extent = "device", legend = "topright")
-mP <- mP + geom_point( data = DensityStarByPrice,
-                      aes( x = DensityStarByPrice$longitude,
-                           y = DensityStarByPrice$latitude,
-                           color = DensityStarByPrice$attributes.Price_Range,
-                           size =  DensityStarByPrice$stars),
-                      alpha = 0.5 )
+# Step 1: Create List of Restaurants...
+lasVegasRestaurants <- yelpBusinessData %>% 
+  filter( grepl("Las Vegas", city ) ) %>%
+  filter( grepl("Restaurants", categories)) %>%
+  filter( open == TRUE)
 
-# Set the Legend to be a continous colour bar... 
-mP <- mP + scale_colour_continuous(low = "blue", 
-                                   high = "red", 
-                                   space = "Lab", 
-                                   guide = "colorbar", 
-                                   name = "Price Range\n")
 
-mP <- mP + scale_size_area(name = "Star Range \n")
-mP <- mP + ggtitle("Plot 3: Star Range [3 to 4] - Las Vegas\n")
-mP3 <- mP # Assign to Panel3
-
-```
-
-```{r lasVegasDensityReviewCountByPrice }
-
-ReviewCountByPrice <- yelpBusinessData %>% 
-  filter(city == "Las Vegas") %>%
-  filter(grepl("Restaurants", categories)) %>%
-  filter(open == TRUE) 
-
-```
-
-Finally, lets compare price range to review count... Note what is interesting here is that the median review count is: **`r median(ReviewCountByPrice$review_count)`**, whilst the mean is: **`r format(mean(ReviewCountByPrice$review_count), scientific=FALSE, digits=5)`**, the max is **`r format(max(ReviewCountByPrice$review_count), scientific=FALSE, digits=5)`**
-
-```{r lasVegasDensityReviewCountByPrice2 }
-
-#  filter( (attributes[[6]][] == 3 | attributes[[6]][] == 4) )
-# 
-# Exp <- yelpBusinessData.PA.rest[which(yelpBusinessData.PA.rest$attributes$Price_Range == 3 |
-#     yelpBusinessData.PA.rest$attributes$Price_Range == 4),]
-
-mP <- ggmap(map, extent = "device", legend = "topright")
-mP <- mP + geom_point( data = ReviewCountByPrice,
-                       aes( x = ReviewCountByPrice$longitude,
-                            y = ReviewCountByPrice$latitude,
-                            color = ReviewCountByPrice$attributes.Price_Range,
-                            size =  ReviewCountByPrice$review_count),
-                       alpha = 0.5 )
-
-# Set the Legend to be a continous colour bar... 
-mP <- mP + scale_colour_continuous(low = "blue", 
-                                   high = "red", 
-                                   space = "Lab", 
-                                   guide = "colorbar", 
-                                   name = "Price Range\n")
-
-mP <- mP + scale_size_area(name = "Review Count \n")
-mP <- mP + ggtitle("Plot 4: Price by Review - Las Vegas\n")
-mP4 <- mP # Assign to Panel4
-```
-
-```{r createPlotTile}
-# Multiple plot function
-#
-# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
-# - cols:   Number of columns in layout
-# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
-#
-# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
-# then plot 1 will go in the upper left, 2 will go in the upper right, and
-# 3 will go all the way across the bottom.
-#
-multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
-  library(grid)
-
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-
-  numPlots = length(plots)
-
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                    ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-
- if (numPlots==1) {
-    print(plots[[1]])
-
+if ( !exists("lasVegasRestaurantReviewAnalysisFinal") ) {
+  if (file.exists( file.path(dataDir,"yelpCheckInData.rds"))) {
+    lasVegasRestaurantReviewAnalysisFinal <- readRDS( file.path(dataDir, "lasVegasRestaurantReviewAnalysisFinal.rds"))
   } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    lasVegasRestaurantReviewAnalysisFinal <- yelpReviewData %>%
+    filter(business_id %in% lasVegasRestaurants$business_id) %>%
+    group_by(business_id) %>%
+    mutate(BizReviewCount = n()) %>% # Create a count of business_id's
+    mutate(reviewLength = stringr::str_count(text)) %>%
+    mutate(totVotes = sum(votes.cool + votes.funny + votes.useful)) %>%
+    mutate(totSent = score.sentiment(text, strsPos, strsNeg)) %>%
+    mutate(totPos = score.Pos(text, positiveWords, strsNeg)) %>%
+    mutate(totPos = score.Neg(text, negativeWords, strsNeg)) %>%
+    left_join(lasVegasRestaurants, by = "business_id") %>%
+    arrange(business_id) 
+    saveRDS( lasVegasRestaurantReviewAnalysis, file.path(dataDir, "lasVegasRestaurantReviewAnalysisFinal.rds"))
 
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
   }
 }
 
-multiplot(mP1, mP2, mP3, mP4, cols = 2)
+nzv_cols <- nearZeroVar(GermanCredit)
+if(length(nzv_cols) > 0) GermanCredit <- GermanCredit[, -nzv_cols]
+
+
 
 ```
 
 
-Note that in Las Vegas the median star rating is: **`r median(lasVegasPrice$stars, na.rm = TRUE)`** and the median Price range is **`r median(lasVegasPrice$attributes.Price_Range, na.rm = TRUE)`**. Hence, we see that when we focus interest on higher priced restaurant we see a sku to the the center of town. Specifically, the Las Vegas party strip.
+#### Correlation Predictors
+
+Similarly, to filter on between-predictor correlations, the cor function was used to calculate the correlations between predictor variables:
+
+To visually examine the correlation structure of the data, we used the corrplot package The function corrplot has many options including one that will reorder the variables in a way that reveals clusters of highly correlated predictors.
+
+```{r CorrPlot}
+
+
+```
+---
+
+### Approach
+
+A key focus of the exploratory analysis was to look to determine how and where the Yelp data interacts. One aspect of the exploratory analysis has been the stabilization of the reviews by volume over time. As yelp has grown, the accuracy of it reviews appears to improve in part becuase the impact of review outliers is less.
+
+Our supposition is that a key driver of Yelp review usage is the **star rating**. Hence, we want to look at what drives this rating and look at how we might predict future **star ratings**. Based on the data so far reviewed, our sense is that the review text of past reviews may be a strong predictor of future reviews. Our asusmption here is that **People like to be right together, or wrong together; people never want to be right alone, or wrong alone** 
+
+Thus, our hypothesis is that positive star ratings are driven by positive textual reviews. Hence, we can look at whether positive and negative review language has a material impact on the star rating given in a review. To do this we perform a linear regression of stars on the number of positive words in the review, the number of negative words in the review. We also look at the length of the review in the context of the language used. i.e. The amount of words in the context of positive or negative language implies stronger feelings.
+
+Thus, our approach is to initially perform a regression of # stars in a Yelp review on # positive words, # negative words, and # words in review, returns these results
+
+### Linear Regression Model
+
+```{r Linear regressionModel}
+
+################################################################################
+# Support Functions
+################################################################################
+
+score.sentiment <- function(sentences, pos.words, neg.words)
+{
+  require(plyr)
+  require(stringr)
+
+  # we got a vector of sentences. plyr will handle a list
+  # or a vector as an "l" for us
+  # we want a simple array ("a") of scores back, so we use
+  # "l" + "a" + "ply" = "laply":
+  scores = laply(sentences, function(sentence, pos.words, neg.words) {
+
+    # clean up sentences with R's regex-driven global substitute, gsub():
+    sentence = gsub('[[:punct:]]', '', sentence)
+    sentence = gsub('[[:cntrl:]]', '', sentence)
+    sentence = gsub('\\d+', '', sentence)
+    # and convert to lower case:
+    sentence = tolower(sentence)
+
+    # split into words. str_split is in the stringr package
+    word.list = str_split(sentence, '\\s+')
+    # sometimes a list() is one level of hierarchy too much
+    words = unlist(word.list)
+
+    # compare our words to the dictionaries of positive & negative terms
+    pos.matches = match(words, pos.words)
+    neg.matches = match(words, neg.words)
+
+    # match() returns the position of the matched term or NA
+    # we just want a TRUE/FALSE:
+    pos.matches = !is.na(pos.matches)
+    neg.matches = !is.na(neg.matches)
+
+    # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
+    score = sum(pos.matches) - sum(neg.matches)
+
+    return(score)
+  }, pos.words, neg.words )
+
+  scores.df = scores[]
+  return(scores.df)
+}
+
+score.Pos <- function(sentences, pos.words, neg.words)
+{
+    require(plyr)
+    require(stringr)
+
+    # we got a vector of sentences. plyr will handle a list
+    # or a vector as an "l" for us
+    # we want a simple array ("a") of scores back, so we use
+    # "l" + "a" + "ply" = "laply":
+    sumPos = laply(sentences, function(sentence, pos.words, neg.words) {
+
+      # clean up sentences with R's regex-driven global substitute, gsub():
+      sentence = gsub('[[:punct:]]', '', sentence)
+      sentence = gsub('[[:cntrl:]]', '', sentence)
+      sentence = gsub('\\d+', '', sentence)
+      # and convert to lower case:
+      sentence = tolower(sentence)
+
+      # split into words. str_split is in the stringr package
+      word.list = str_split(sentence, '\\s+')
+      # sometimes a list() is one level of hierarchy too much
+      words = unlist(word.list)
+
+      # compare our words to the dictionaries of positive & negative terms
+      pos.matches = match(words, pos.words)
+      neg.matches = match(words, neg.words)
+
+      # match() returns the position of the matched term or NA
+      # we just want a TRUE/FALSE:
+      pos.matches = !is.na(pos.matches)
+      neg.matches = !is.na(neg.matches)
+
+      # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
+      score = sum(pos.matches) - sum(neg.matches)
+
+      return(sum(pos.matches))
+    }, pos.words, neg.words )
+
+    sumPos.df = sumPos[]
+    return(sumPos.df)
+  }
+
+score.Neg <- function(sentences, pos.words, neg.words)
+{
+  require(plyr)
+  require(stringr)
+
+  # we got a vector of sentences. plyr will handle a list
+  # or a vector as an "l" for us
+  # we want a simple array ("a") of scores back, so we use
+  # "l" + "a" + "ply" = "laply":
+  sumNeg = laply(sentences, function(sentence, pos.words, neg.words) {
+
+    # clean up sentences with R's regex-driven global substitute, gsub():
+    sentence = gsub('[[:punct:]]', '', sentence)
+    sentence = gsub('[[:cntrl:]]', '', sentence)
+    sentence = gsub('\\d+', '', sentence)
+    # and convert to lower case:
+    sentence = tolower(sentence)
+
+    # split into words. str_split is in the stringr package
+    word.list = str_split(sentence, '\\s+')
+    # sometimes a list() is one level of hierarchy too much
+    words = unlist(word.list)
+
+    # compare our words to the dictionaries of positive & negative terms
+    pos.matches = match(words, pos.words)
+    neg.matches = match(words, neg.words)
+
+    # match() returns the position of the matched term or NA
+    # we just want a TRUE/FALSE:
+    pos.matches = !is.na(pos.matches)
+    neg.matches = !is.na(neg.matches)
+
+    # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
+    score = sum(pos.matches) - sum(neg.matches)
+
+    return(sum(neg.matches))
+  }, pos.words, neg.words )
+
+  sumNeg.df = sumNeg[]
+  return(sumNeg.df)
+}
+
+# Step 1: Create List of Restaurants...
+lasVegasRestaurants <- yelpBusinessData %>% 
+  filter( grepl("Las Vegas", city ) ) %>%
+  filter( grepl("Restaurants", categories)) %>%
+  filter( open == TRUE)
+
+# # Step 2: Create List of Restaurants...
+# lasVegasRestaurantReviewAnalysis <- yelpReviewData %>% 
+#   filter( business_id %in% lasVegasRestaurants$business_id  ) %>%
+#     group_by(business_id) %>%
+#       mutate(BizReviewCount = n()) %>% # Create a count of business_id's
+#         left_join(lasVegasRestaurants, by = "business_id") %>% 
+#           arrange(business_id)
+
+# Load Positive Word List and Negative Word List
+strsPos <- readLines("./data/positive-words.txt")
+strsNeg <- readLines("./data/negative-words.txt")
+positiveWords <- read.csv(text = strsPos, skip = 33, nrows = length(strsPos) - 3)
+negativeWords <- read.csv(text = strsNeg, skip = 33, nrows = length(strsNeg) - 3)
+
+pos_Words <- as.data.frame(positiveWords)
+neg_Words <- as.data.frame(negativeWords)
+
+if ( !exists("lasVegasRestaurantReviewAnalysisFinal") ) {
+  if (file.exists( file.path(dataDir,"yelpCheckInData.rds"))) {
+    lasVegasRestaurantReviewAnalysisFinal <- readRDS( file.path(dataDir, "lasVegasRestaurantReviewAnalysisFinal.rds"))
+  } else {
+    lasVegasRestaurantReviewAnalysisFinal <- yelpReviewData %>%
+    filter(business_id %in% lasVegasRestaurants$business_id) %>%
+    group_by(business_id) %>%
+    mutate(BizReviewCount = n()) %>% # Create a count of business_id's
+    mutate(reviewLength = stringr::str_count(text)) %>%
+    mutate(totVotes = sum(votes.cool + votes.funny + votes.useful)) %>%
+    mutate(totSent = score.sentiment(text, strsPos, strsNeg)) %>%
+    mutate(totPos = score.Pos(text, positiveWords, strsNeg)) %>%
+    mutate(totPos = score.Neg(text, negativeWords, strsNeg)) %>%
+    left_join(lasVegasRestaurants, by = "business_id") %>%
+    arrange(business_id) 
+    saveRDS( lasVegasRestaurantReviewAnalysis, file.path(dataDir, "lasVegasRestaurantReviewAnalysisFinal.rds"))
+
+  }
+}
+
+#---------- Create Linear Model ---------------------
+d <- lasVegasRestaurantReviewAnalysisFinal 
+
+model.fit = lm( stars.y ~ reviewLength + totPos + totPos + totSent + BizReviewCount, data = d )
+summary(model.fit)
+  
+
+```
+### Random Forest Model
+
+
+## Methods and Data
+- Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
+
+## Results 
+- Describe what you found through your analysis of the data.
 
 ### Restaurant Density by Type?
 
@@ -590,7 +679,6 @@ This gives the process and answer in the context of Las Vegas as to:
 In the context of Las Vegas we determine that the highest occurance of restaurant is fast food, followed by mexican based on occurance.
 
 ```{r restaurantReview }
-
 # Create List of Restaurants...
 lasVegasRestaurants <- yelpBusinessData %>% 
   filter( grepl("Las Vegas", city ) ) %>%
@@ -915,15 +1003,20 @@ gp <- ggplot(aes( x = as.POSIXct(paste(date,"-01", sep = "")),
 gp <- gp + scale_x_datetime(breaks = scales::date_breaks("1 year"), labels = date_format("%Y"))
 gp <- gp + scale_y_continuous(label = comma)
 gp <- gp + geom_area(position = "stack")
+# gp <- gp + scale_color_discrete( name = "")
 gp <- gp + theme_wsj()
-gp <- gp +  theme(
+gp <- gp + theme(
+  legend.position = "bottom" ,
   legend.title = element_blank(),
-  legend.position = c(0.12, 0.8),
+  legend.text = element_text(size = 13),           
+  legend.background = element_blank(), 
+  legend.key = element_blank(),
+#  legend.position = c(0.12, 0.8),
   legend.direction = "horizontal",
   legend.key.width = unit(0.25, "cm"),
   legend.key.height = unit(0.25, "cm"),
-  legend.margin = unit(-0.5,"cm"),
-  panel.margin = element_blank())
+  legend.margin = unit(-0.5,"cm"))
+#  panel.margin = element_blank())
 gp <- gp + labs(title = paste( "Yelp Review count by Month in Las Vegas\nby # Stars for",
                 format(nrow(lasVegasRestaurantReviewAnalysis),big.mark = ","), "Reviews"),
                 x = "Date of Review Submission",
@@ -931,234 +1024,6 @@ gp <- gp + labs(title = paste( "Yelp Review count by Month in Las Vegas\nby # St
 gp
 
 ```
-
-## Feature Inspection
-
-## Restaurant Prediction
-
-Our intent is to predict the star rating of a restaurant in a given region of the data set... Is this posible? 
-
-### Near Zero Varience Predictors
-
-To filter for near-zero variance predictors, we use the caret package function nearZeroVar() which will return the column numbers of any predictors that fulfill the conditions outlined. 
-
-Why check? There are potential advantages to removing predictors prior to modeling. First, fewer predictors means decreased computational time and complexity. Second, if two predictors are highly correlated, this implies that they are measuring the same underlying information. Removing one should not compromise the performance of the model and might lead to a more parsimonious and interpretable model. Third, some models can be crippled by predictors with degenerate distributions. In these cases, there can be a significant improvement in model performance and/or stability without the problematic variables.
-
-#### Correlation Predictors
-
-Similarly, to filter on between-predictor correlations, the cor function was used to calculate the correlations between predictor variables:
-
-To visually examine the correlation structure of the data, we used the corrplot package The function corrplot has many options including one that will reorder the variables in a way that reveals clusters of highly correlated predictors.
-
-```{r CorrPlot}
-
-
-```
----
-
-### Approach
-
-A key focus of the exploratory analysis was to look to determine how and where the Yelp data interacts. One aspect of the exploratory analysis has been the stabilization of the reviews by volume over time. As yelp has grown, the accuracy of it reviews appears to improve in part becuase the impact of review outliers is less.
-
-Our supposition is that a key driver of Yelp review usage is the **star rating**. Hence, we want to look at what drives this rating and look at how we might predict future **star ratings**. Based on the data so far reviewed, our sense is that the review text of past reviews may be a strong predictor of future reviews. Our asusmption here is that **People like to be right together, or wrong together; people never want to be right alone, or wrong alone** 
-
-Thus, our hypothesis is that positive star ratings are driven by positive textual reviews. Hence, we can look at whether positive and negative review language has a material impact on the star rating given in a review. To do this we perform a linear regression of stars on the number of positive words in the review, the number of negative words in the review. We also look at the length of the review in the context of the language used. i.e. The amount of words in the context of positive or negative language implies stronger feelings.
-
-Thus, our approach is to initially perform a regression of # stars in a Yelp review on # positive words, # negative words, and # words in review, returns these results
-
-### Linear Regression Model
-
-```{r Linear regressionModel}
-
-################################################################################
-# Support Functions
-################################################################################
-
-score.sentiment <- function(sentences, pos.words, neg.words)
-{
-  require(plyr)
-  require(stringr)
-
-  # we got a vector of sentences. plyr will handle a list
-  # or a vector as an "l" for us
-  # we want a simple array ("a") of scores back, so we use
-  # "l" + "a" + "ply" = "laply":
-  scores = laply(sentences, function(sentence, pos.words, neg.words) {
-
-    # clean up sentences with R's regex-driven global substitute, gsub():
-    sentence = gsub('[[:punct:]]', '', sentence)
-    sentence = gsub('[[:cntrl:]]', '', sentence)
-    sentence = gsub('\\d+', '', sentence)
-    # and convert to lower case:
-    sentence = tolower(sentence)
-
-    # split into words. str_split is in the stringr package
-    word.list = str_split(sentence, '\\s+')
-    # sometimes a list() is one level of hierarchy too much
-    words = unlist(word.list)
-
-    # compare our words to the dictionaries of positive & negative terms
-    pos.matches = match(words, pos.words)
-    neg.matches = match(words, neg.words)
-
-    # match() returns the position of the matched term or NA
-    # we just want a TRUE/FALSE:
-    pos.matches = !is.na(pos.matches)
-    neg.matches = !is.na(neg.matches)
-
-    # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
-    score = sum(pos.matches) - sum(neg.matches)
-
-    return(score)
-  }, pos.words, neg.words )
-
-  scores.df = scores[]
-  return(scores.df)
-}
-
-score.Pos <- function(sentences, pos.words, neg.words)
-{
-    require(plyr)
-    require(stringr)
-
-    # we got a vector of sentences. plyr will handle a list
-    # or a vector as an "l" for us
-    # we want a simple array ("a") of scores back, so we use
-    # "l" + "a" + "ply" = "laply":
-    sumPos = laply(sentences, function(sentence, pos.words, neg.words) {
-
-      # clean up sentences with R's regex-driven global substitute, gsub():
-      sentence = gsub('[[:punct:]]', '', sentence)
-      sentence = gsub('[[:cntrl:]]', '', sentence)
-      sentence = gsub('\\d+', '', sentence)
-      # and convert to lower case:
-      sentence = tolower(sentence)
-
-      # split into words. str_split is in the stringr package
-      word.list = str_split(sentence, '\\s+')
-      # sometimes a list() is one level of hierarchy too much
-      words = unlist(word.list)
-
-      # compare our words to the dictionaries of positive & negative terms
-      pos.matches = match(words, pos.words)
-      neg.matches = match(words, neg.words)
-
-      # match() returns the position of the matched term or NA
-      # we just want a TRUE/FALSE:
-      pos.matches = !is.na(pos.matches)
-      neg.matches = !is.na(neg.matches)
-
-      # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
-      score = sum(pos.matches) - sum(neg.matches)
-
-      return(sum(pos.matches))
-    }, pos.words, neg.words )
-
-    sumPos.df = sumPos[]
-    return(sumPos.df)
-  }
-
-score.Neg <- function(sentences, pos.words, neg.words)
-{
-  require(plyr)
-  require(stringr)
-
-  # we got a vector of sentences. plyr will handle a list
-  # or a vector as an "l" for us
-  # we want a simple array ("a") of scores back, so we use
-  # "l" + "a" + "ply" = "laply":
-  sumNeg = laply(sentences, function(sentence, pos.words, neg.words) {
-
-    # clean up sentences with R's regex-driven global substitute, gsub():
-    sentence = gsub('[[:punct:]]', '', sentence)
-    sentence = gsub('[[:cntrl:]]', '', sentence)
-    sentence = gsub('\\d+', '', sentence)
-    # and convert to lower case:
-    sentence = tolower(sentence)
-
-    # split into words. str_split is in the stringr package
-    word.list = str_split(sentence, '\\s+')
-    # sometimes a list() is one level of hierarchy too much
-    words = unlist(word.list)
-
-    # compare our words to the dictionaries of positive & negative terms
-    pos.matches = match(words, pos.words)
-    neg.matches = match(words, neg.words)
-
-    # match() returns the position of the matched term or NA
-    # we just want a TRUE/FALSE:
-    pos.matches = !is.na(pos.matches)
-    neg.matches = !is.na(neg.matches)
-
-    # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
-    score = sum(pos.matches) - sum(neg.matches)
-
-    return(sum(neg.matches))
-  }, pos.words, neg.words )
-
-  sumNeg.df = sumNeg[]
-  return(sumNeg.df)
-}
-
-# Step 1: Create List of Restaurants...
-lasVegasRestaurants <- yelpBusinessData %>% 
-  filter( grepl("Las Vegas", city ) ) %>%
-  filter( grepl("Restaurants", categories)) %>%
-  filter( open == TRUE)
-
-# # Step 2: Create List of Restaurants...
-# lasVegasRestaurantReviewAnalysis <- yelpReviewData %>% 
-#   filter( business_id %in% lasVegasRestaurants$business_id  ) %>%
-#     group_by(business_id) %>%
-#       mutate(BizReviewCount = n()) %>% # Create a count of business_id's
-#         left_join(lasVegasRestaurants, by = "business_id") %>% 
-#           arrange(business_id)
-
-# Load Positive Word List and Negative Word List
-strsPos <- readLines("./data/positive-words.txt")
-strsNeg <- readLines("./data/negative-words.txt")
-positiveWords <- read.csv(text = strsPos, skip = 33, nrows = length(strsPos) - 3)
-negativeWords <- read.csv(text = strsNeg, skip = 33, nrows = length(strsNeg) - 3)
-
-pos_Words <- as.data.frame(positiveWords)
-neg_Words <- as.data.frame(negativeWords)
-
-if ( !exists("lasVegasRestaurantReviewAnalysisFinal") ) {
-  if (file.exists( file.path(dataDir,"yelpCheckInData.rds"))) {
-    lasVegasRestaurantReviewAnalysisFinal <- readRDS( file.path(dataDir, "lasVegasRestaurantReviewAnalysisFinal.rds"))
-  } else {
-    lasVegasRestaurantReviewAnalysisFinal <- yelpReviewData %>%
-    filter(business_id %in% lasVegasRestaurants$business_id) %>%
-    group_by(business_id) %>%
-    mutate(BizReviewCount = n()) %>% # Create a count of business_id's
-    mutate(reviewLength = stringr::str_count(text)) %>%
-    mutate(totVotes = sum(votes.cool + votes.funny + votes.useful)) %>%
-    mutate(totSent = score.sentiment(text, strsPos, strsNeg)) %>%
-    mutate(totPos = score.Pos(text, positiveWords, strsNeg)) %>%
-    mutate(totPos = score.Neg(text, negativeWords, strsNeg)) %>%
-    left_join(lasVegasRestaurants, by = "business_id") %>%
-    arrange(business_id) 
-    saveRDS( lasVegasRestaurantReviewAnalysis, file.path(dataDir, "lasVegasRestaurantReviewAnalysisFinal.rds"))
-
-  }
-}
-
-#---------- Create Linear Model ---------------------
-d <- lasVegasRestaurantReviewAnalysis 
-
-model.fit = lm( stars.y ~ reviewLength + totPos + totPos + totSent + BizReviewCount, data = lasVegasRestaurantReviewAnalysis )
-summary(model.fit)
-  
-
-```
-### Random Forest Model
-
-
-## Methods and Data
-- Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
-
-## Results 
-- Describe what you found through your analysis of the data.
 
 ## Discussion
 - Explain how you interpret the results of your analysis and what the implications are for your question/problem.
@@ -1169,3 +1034,201 @@ summary(model.fit)
 
 [1]: https://www.yelp.com/developers/documentation/
 [2]: https://www.yelp.com/developers/documentation/v2/all_category_list
+
+#Appendix A
+
+```{r mapSetup}
+
+map <- get_map(location = 'Las Vegas, NV', zoom = 10, maptype = "roadmap")
+yelpBusinessData$city <- as.factor(yelpBusinessData$city)
+yelpBusinessData.NV <- yelpBusinessData[which(yelpBusinessData$city == "Las Vegas"),]
+# Only restaurants (as in category)
+yelpBusinessData.NV.rest <- yelpBusinessData.NV[which(grepl("Restaurants", yelpBusinessData.NV$categories)),]
+
+```
+
+Firstly, lets just look at all the Las Vegas restaurants that are open and map out their price range...
+
+```{r lasVegasPriceDensity}
+lasVegasPrice <- yelpBusinessData %>% 
+  filter(city == "Las Vegas") %>%
+  filter(grepl("Restaurants", categories)) %>%
+  filter(open == TRUE)
+
+mP <- ggmap(map, extent = "device", legend = "topright")
+mP <- mP + geom_point( data = lasVegasPrice,
+                      aes( x = lasVegasPrice$longitude,
+                           y = lasVegasPrice$latitude,
+                           color = lasVegasPrice$attributes.Price_Range,
+                           size =  lasVegasPrice$attributes.Price_Range),
+                      alpha = 0.5 )
+
+# Set the Legend to be a continous colour bar... 
+mP <- mP + scale_colour_continuous(low = "blue", 
+                                   high = "red", 
+                                   space = "Lab", 
+                                   guide = "colorbar", 
+                                   name = "Price Range \n")
+mP <- mP + scale_size_area(name = "Price Range \n")
+mP <- mP + ggtitle("Plot 1: Price Density - Las Vegas\n")
+mP1 <- mP # Assign to Panel4
+
+```
+
+OK, where are the expensive restaurants?... Lets look at the restaurants with a price range of between 3 and 4...
+
+```{r lasVegasExpDensity }
+
+lasVegasExpDensity <- yelpBusinessData %>% 
+  filter(city == "Las Vegas") %>%
+  filter(grepl("Restaurants", categories)) %>%
+  filter(open == TRUE) %>%
+  filter( (attributes.Price_Range == 3 | attributes.Price_Range == 4) )
+
+# lasVegasExpDensity <- lasVegasExpDensity[which(lasVegasExpDensity$attributes$Price_Range == 3 |
+#     lasVegasExpDensity$attributes$Price_Range == 4),]
+
+mP <- ggmap(map, extent = "device", legend = "topright")
+mP <- mP + geom_point( data = lasVegasExpDensity,
+                      aes( x = lasVegasExpDensity$longitude,
+                           y = lasVegasExpDensity$latitude,
+                           color = lasVegasExpDensity$attributes.Price_Range,
+                           size =  lasVegasExpDensity$attributes.Price_Range),
+                      alpha = 0.5 )
+
+# Set the Legend to be a continous colour bar... 
+mP <- mP + scale_colour_continuous(low = "blue", 
+                                   high = "red", 
+                                   space = "Lab", 
+                                   guide = "colorbar", 
+                                   name = "Price Range\n")
+
+mP <- mP + scale_size_area(name = "Price Range \n")
+mP <- mP + ggtitle("Plot 2: Price Range [3 to 4] - Las Vegas\n")
+mP2 <- mP # Assign to Panel2
+
+```
+
+Hmmm, now lets look at restaurants with good star ratings [3 through 4] and a price range of 3 through 4... 
+
+```{r lasVegasDensityStarByPrice }
+DensityStarByPrice <- yelpBusinessData %>% 
+  filter(city == "Las Vegas") %>%
+  filter(grepl("Restaurants", categories)) %>%
+  filter(open == TRUE) %>% 
+  filter( stars > 3 ) %>%
+  filter( (attributes.Price_Range == 3 | attributes.Price_Range == 4) )
+
+#  filter( (attributes[[6]][] == 3 | attributes[[6]][] == 4) )
+# 
+# Exp <- yelpBusinessData.PA.rest[which(yelpBusinessData.PA.rest$attributes$Price_Range == 3 |
+#     yelpBusinessData.PA.rest$attributes$Price_Range == 4),]
+
+mP <- ggmap(map, extent = "device", legend = "topright")
+mP <- mP + geom_point( data = DensityStarByPrice,
+                      aes( x = DensityStarByPrice$longitude,
+                           y = DensityStarByPrice$latitude,
+                           color = DensityStarByPrice$attributes.Price_Range,
+                           size =  DensityStarByPrice$stars),
+                      alpha = 0.5 )
+
+# Set the Legend to be a continous colour bar... 
+mP <- mP + scale_colour_continuous(low = "blue", 
+                                   high = "red", 
+                                   space = "Lab", 
+                                   guide = "colorbar", 
+                                   name = "Price Range\n")
+
+mP <- mP + scale_size_area(name = "Star Range \n")
+mP <- mP + ggtitle("Plot 3: Star Range [3 to 4] - Las Vegas\n")
+mP3 <- mP # Assign to Panel3
+
+```
+
+
+```{r ReviewCountByPrice}
+ReviewCountByPrice <- yelpBusinessData %>% 
+  filter(city == "Las Vegas") %>%
+  filter(grepl("Restaurants", categories)) %>%
+  filter(open == TRUE) 
+```
+
+Finally, lets compare price range to review count... Note what is interesting here is that the median review count is: **`r median(ReviewCountByPrice$review_count)`**, whilst the mean is: **`r format(mean(ReviewCountByPrice$review_count), scientific=FALSE, digits=5)`**, the max is **`r format(max(ReviewCountByPrice$review_count), scientific=FALSE, digits=5)`**
+
+```{r lasVegasDensityReviewCountByPrice2 }
+
+#  filter( (attributes[[6]][] == 3 | attributes[[6]][] == 4) )
+# 
+# Exp <- yelpBusinessData.PA.rest[which(yelpBusinessData.PA.rest$attributes$Price_Range == 3 |
+#     yelpBusinessData.PA.rest$attributes$Price_Range == 4),]
+
+mP <- ggmap(map, extent = "device", legend = "topright")
+mP <- mP + geom_point( data = ReviewCountByPrice,
+                       aes( x = ReviewCountByPrice$longitude,
+                            y = ReviewCountByPrice$latitude,
+                            color = ReviewCountByPrice$attributes.Price_Range,
+                            size =  ReviewCountByPrice$review_count),
+                       alpha = 0.5 )
+
+# Set the Legend to be a continous colour bar... 
+mP <- mP + scale_colour_continuous(low = "blue", 
+                                   high = "red", 
+                                   space = "Lab", 
+                                   guide = "colorbar", 
+                                   name = "Price Range\n")
+
+mP <- mP + scale_size_area(name = "Review Count \n")
+mP <- mP + ggtitle("Plot 4: Price by Review - Las Vegas\n")
+mP4 <- mP # Assign to Panel4
+```
+
+```{r createPlotTile}
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots == 1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+multiplot(mP1, mP2, mP3, mP4, cols = 2)
+
+```
